@@ -15,3 +15,14 @@ Install
 
 Der Ablauf ist [hier](http://bumble.sourceforge.net/books/osdev/osdev-book.txt.x.html "Befehle")
 näher beschrieben
+
+Debugging
+---------
+1. Starten von QEMU  
+`qemu-system-i386 -s -S -fda os.flp`
+2. Starten des gdb
+```
+$ gdb
+(gdb) target remote localhost:1234
+(gdb) continue
+```
