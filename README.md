@@ -1,6 +1,11 @@
-DHBW Kernel
+Studienarbeit: DHBW Kernel
 ==============
-Studienarbeit von Michael Christa und Jonas Polkehn; Kurs TIT12
+
+|Gruppenmitglieder| Betreuer |
+|-----------------|----------|
+|Michael Christa  |Herr Dr. Reutemann |
+|Jonas Polkehn    |
+
 
 Install
 -------
