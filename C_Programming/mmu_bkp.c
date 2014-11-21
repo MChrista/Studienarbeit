@@ -4,7 +4,6 @@
 
 // MMU Function
 int convertVirtualToPhysical( int virtualAddr, int* pageDir ) {
-  printf("Page Dir Address %08X\n",&pageDir);
   int page_offset = virtualAddr & 0x00000FFF;
   printf("Page Offset      : %08X\n", page_offset);
   int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
@@ -12,7 +11,7 @@ int convertVirtualToPhysical( int virtualAddr, int* pageDir ) {
   int page_dir_offset = virtualAddr >> 22;
   printf("Page Dir Offset  : %08X\n", page_dir_offset);
 
-  int page_table = pageDir + page_dir_offset; // vielleicht plus?
+  int * page_table = pageDir + page_dir_offset; // vielleicht plus?
   printf ("Page Dir Entry   : %08X\n", &page_table);
   int page_entry = page_table + page_table_offset;
   printf ("Page Table Entry : %08X\n", page_entry);
@@ -22,8 +21,8 @@ int convertVirtualToPhysical( int virtualAddr, int* pageDir ) {
 }
 
 int main() {
-  static int *pageDir[10];
-  static int pageTable[10];
+  int *pageDir[10];
+  int pageTable[10];
 
   pageDir[1] = & pageTable;
   pageTable[0] = 0x12345000;
@@ -31,6 +30,6 @@ int main() {
   printf("Value of Directory: %08X\n", pageDir[1]);
   int testAddr = 0x00400CCC;
 
-  printf("%08X -> %08X\n", testAddr, convertVirtualToPhysical(testAddr, & pageDir));
+  printf("%08X -> %08X\n", testAddr, convertVirtualToPhysical(testAddr, * pageDir));
 
 }
