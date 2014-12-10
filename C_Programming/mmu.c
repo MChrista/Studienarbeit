@@ -4,7 +4,7 @@
 
 // MMU Function
 int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
-  printf("Page Dir Address %016p\n",page_directory);
+  //printf("Page Dir Address %p\n",page_directory);
   int page_offset = virtualAddr & 0x00000FFF;
   //printf("Page Offset      : %08X\n", page_offset);
   int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
@@ -18,31 +18,31 @@ int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
   {
       pageFault(virtualAddr, page_directory);
   }
-  int * page_table = (void *) page_directory[page_dir_offset]; // vielleicht plus?
+  uint32_t * page_table = (void *) page_directory[page_dir_offset]; // vielleicht plus?
   
-  printf ("Page Dir Entry   : %016p\n", page_table);
+  //printf ("Page Dir Entry   : %p\n", page_table);
   int page_entry = * ((page_table) + page_table_offset);
-  printf ("Page Table Entry : %016p\n", page_entry);
+  //printf ("Page Table Entry : %p\n", page_entry);
 
 
   return  page_entry + page_offset;
 }
 
 void pageFault( int virtualAddr, uint32_t page_directory[] ){
-    printf("Page Fault at: %016p\n", virtualAddr );
+    printf("Page Fault at: %p\n", virtualAddr );
     
     // Create Page Table
     uint32_t page_table[1024] __attribute__((align(4096)));
     int page_dir_offset = virtualAddr >> 22;
     page_directory[page_dir_offset] = ((unsigned int)page_table) ;
-    printf("Physical Page Table Address: %016p\n", page_table );
+    //printf("Physical Page Table Address: %p\n", page_table );
     
     // Create Page in Page Table
        
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
     
     int physical_page_addr = malloc(0x1000);
-    printf("Physical Page Addr: %016p\n", physical_page_addr & 0xFFFFF000 | 3 );
+    //printf("Physical Page Addr: %p\n", physical_page_addr & 0xFFFFF000 | 3 );
     page_table[page_table_offset] = (physical_page_addr & 0xFFFFF000 | 3) ;
     
      
@@ -63,26 +63,25 @@ int translate(){
     
 }
 
+
 int main() {
   
   // Page Directory anlegen
    uint32_t page_directory[1024] __attribute__((align(4096)));
-    
+  
   //printf("Value of Directory: %08X\n", pageDir[1]);
+ 
+  // Testfälle
   int testAddr = 0x00400CCC;
-
+  printf("%p -> %p (Page Fault expected)\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
   printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
-
-   // set to not present
-   int i;
-    for(i = 0; i < 1024; i++)
-    {
-        // This sets the following flags to the pages:
-        //   Supervisor: Only kernel-mode can access them
-        //   Write Enabled: It can be both read from and written to
-        //   Not Present: The page table is not present
-        page_directory[i] = 0x00000002;
-    }
+  
+  testAddr = 0x00400AAA;
+  printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
+  
+  testAddr = 0x00800AAA;
+  printf("%p -> %p (Page Fault expected)\n ", testAddr, convertVirtualToPhysical(testAddr, page_directory));
+  
    
 
 }
