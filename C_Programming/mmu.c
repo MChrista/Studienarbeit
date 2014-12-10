@@ -3,8 +3,8 @@
 #include <inttypes.h>
 
 // MMU Function
-int convertVirtualToPhysical( int virtualAddr, int *pageDir[] ) {
-  printf("Page Dir Address %p\n",pageDir);
+int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
+  printf("Page Dir Address %016p\n",page_directory);
   int page_offset = virtualAddr & 0x00000FFF;
   //printf("Page Offset      : %08X\n", page_offset);
   int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
@@ -12,16 +12,41 @@ int convertVirtualToPhysical( int virtualAddr, int *pageDir[] ) {
   int page_dir_offset = virtualAddr >> 22;
   //printf("Page Dir Offset  : %08X\n", page_dir_offset);
 
-  int * page_table = (void *) pageDir[1]; // vielleicht plus?
   
-  printf ("Page Dir Entry   : %p\n", page_table);
-  int page_entry = * (page_table + page_table_offset);
-  printf ("Page Table Entry : %08X\n", page_entry);
+  // if page_table cannot be found, throw page fault
+  if (!page_directory[page_dir_offset])
+  {
+      pageFault(virtualAddr, page_directory);
+  }
+  int * page_table = (void *) page_directory[page_dir_offset]; // vielleicht plus?
+  
+  printf ("Page Dir Entry   : %016p\n", page_table);
+  int page_entry = * ((page_table) + page_table_offset);
+  printf ("Page Table Entry : %016p\n", page_entry);
 
 
   return  page_entry + page_offset;
 }
 
+void pageFault( int virtualAddr, uint32_t page_directory[] ){
+    printf("Page Fault at: %016p\n", virtualAddr );
+    
+    // Create Page Table
+    uint32_t page_table[1024] __attribute__((align(4096)));
+    int page_dir_offset = virtualAddr >> 22;
+    page_directory[page_dir_offset] = ((unsigned int)page_table) ;
+    printf("Physical Page Table Address: %016p\n", page_table );
+    
+    // Create Page in Page Table
+       
+    int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
+    
+    int physical_page_addr = malloc(0x1000);
+    printf("Physical Page Addr: %016p\n", physical_page_addr & 0xFFFFF000 | 3 );
+    page_table[page_table_offset] = (physical_page_addr & 0xFFFFF000 | 3) ;
+    
+     
+}
 
 /*
  * This function should translate 16MB from Floppy 
@@ -34,25 +59,30 @@ int translate(){
         printf("Aktuelle Roundnumber: %i \n",counter++);
         printf("Aktueller Hexwert: %x\n",i);
     }
-    fflush(stdout);
     return 1;
     
 }
 
 int main() {
-    /*
-  static int * pageDir[10];
-  static int pageTable[10];
   
-  printf("Address of Directory %p\n",pageDir);
-  printf("Address of pageTable %p\n",pageTable);
-  pageDir[1] = pageTable;
-  pageTable[0] = 0x12345000;
- 
+  // Page Directory anlegen
+   uint32_t page_directory[1024] __attribute__((align(4096)));
+    
   //printf("Value of Directory: %08X\n", pageDir[1]);
   int testAddr = 0x00400CCC;
 
-  printf("%08X -> %08X\n", testAddr, convertVirtualToPhysical(testAddr, pageDir));
-  */
-    translate();
+  printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
+
+   // set to not present
+   int i;
+    for(i = 0; i < 1024; i++)
+    {
+        // This sets the following flags to the pages:
+        //   Supervisor: Only kernel-mode can access them
+        //   Write Enabled: It can be both read from and written to
+        //   Not Present: The page table is not present
+        page_directory[i] = 0x00000002;
+    }
+   
+
 }
