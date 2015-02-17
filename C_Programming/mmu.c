@@ -3,6 +3,8 @@
 #include <inttypes.h>
 #include "mmu.h"
 
+
+uint32_t page_directory;
 // MMU Function
 int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
   //printf("Page Dir Address %p\n",page_directory);
@@ -51,22 +53,22 @@ void pageFault( int virtualAddr, uint32_t page_directory[] ){
 
 
 int init_paging() {
-  
+   uint32_t local_directory[1024] __attribute__((align(4096)));
   // Page Directory anlegen
-   uint32_t page_directory[1024] __attribute__((align(4096)));
+   page_directory = local_directory;
+   int testAddr = 0x00400CCC;
+    printf("%p -> %p (Page Fault expected)\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
+    printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
+
+    testAddr = 0x00400AAA;
+    printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
+
+    testAddr = 0x00800AAA;
+    printf("%p -> %p (Page Fault expected)\n ", testAddr, convertVirtualToPhysical(testAddr, page_directory));
   
   //printf("Value of Directory: %08X\n", pageDir[1]);
  
-  // Testfälle
-  int testAddr = 0x00400CCC;
-  printf("%p -> %p (Page Fault expected)\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
-  printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
-  
-  testAddr = 0x00400AAA;
-  printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
-  
-  testAddr = 0x00800AAA;
-  printf("%p -> %p (Page Fault expected)\n ", testAddr, convertVirtualToPhysical(testAddr, page_directory));
+
   
    
 
