@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include "mmu.h"
 
 // MMU Function
 int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
@@ -64,7 +65,7 @@ int translate(){
 }
 
 
-int main() {
+int init_paging() {
   
   // Page Directory anlegen
    uint32_t page_directory[1024] __attribute__((align(4096)));
