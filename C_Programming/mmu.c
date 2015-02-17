@@ -49,21 +49,6 @@ void pageFault( int virtualAddr, uint32_t page_directory[] ){
      
 }
 
-/*
- * This function should translate 16MB from Floppy 
- * 16MB=2²⁷=8 000 000 Hex = 134 217 728 Bit
- * 4KB=2¹⁵=8 000 Hex = 32768 Bit
-*/
-int translate(){
-    int counter = 0;
-    for(int i=0x0000000;i<0x8000000;i+=0x8000){
-        printf("Aktuelle Roundnumber: %i \n",counter++);
-        printf("Aktueller Hexwert: %x\n",i);
-    }
-    return 1;
-    
-}
-
 
 int init_paging() {
   
