@@ -5,15 +5,12 @@
 #include "mmu.h"
 
 
-int zaehlen() {
-	static int counter = 0;
-	return ++counter;
-}
+
 
 
 
 int main(){
-    //init_paging();
+    init_paging();
     /*
     char str[100];
     
@@ -26,12 +23,7 @@ int main(){
     }while(strcmp(str , "exit"));
     //Float: %.2f
     */
-    printf("Zaehler: %d\n", zaehlen());
-    printf("Zaehler: %d\n", zaehlen());	
-    printf("Zaehler: %d\n", zaehlen());
- 
-    
-    
+
     return 0;
 
 }

@@ -4,7 +4,10 @@
 #include "mmu.h"
 
 
-uint32_t page_directory;
+uint32_t *page_directory;
+const int NumberOfPageTables = 10;
+int page_tables[10];
+
 // MMU Function
 int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
   //printf("Page Dir Address %p\n",page_directory);
@@ -21,7 +24,7 @@ int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
   {
       pageFault(virtualAddr, page_directory);
   }
-  uint32_t * page_table = (void *) page_directory[page_dir_offset]; // vielleicht plus?
+  uint32_t * page_table = (void *) page_directory[page_dir_offset]; 
   
   //printf ("Page Dir Entry   : %p\n", page_table);
   int page_entry = * ((page_table) + page_table_offset);
@@ -53,10 +56,34 @@ void pageFault( int virtualAddr, uint32_t page_directory[] ){
 
 
 int init_paging() {
-   uint32_t local_directory[1024] __attribute__((align(4096)));
-  // Page Directory anlegen
-   page_directory = local_directory;
-   int testAddr = 0x00400CCC;
+    // Initialize Page Directoy
+    uint32_t local_directory[1024] __attribute__((align(4096)));
+    page_directory = local_directory;
+    
+    
+    
+    //Copy Kernel to First Page
+    uint32_t kernel_page_table[1024] __attribute__((align(4096)));
+    
+    
+    
+    // Initialize Pool of Pages
+    for(int i = 0;i < NumberOfPageTables; i++){
+        uint32_t page_table[1024] __attribute__((align(4096)));
+        page_tables[i] = page_table;
+    }
+    
+    /*Access to Page Table
+     *int *pointer = page_tables[0];
+     **(pointer+1) = 100;    
+     */
+    
+    
+    
+    
+    // Subsequent are Testaddresses
+    /*
+    int testAddr = 0x00400CCC;
     printf("%p -> %p (Page Fault expected)\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
     printf("%p -> %p\n", testAddr, convertVirtualToPhysical(testAddr, page_directory));
 
@@ -65,11 +92,6 @@ int init_paging() {
 
     testAddr = 0x00800AAA;
     printf("%p -> %p (Page Fault expected)\n ", testAddr, convertVirtualToPhysical(testAddr, page_directory));
-  
-  //printf("Value of Directory: %08X\n", pageDir[1]);
- 
-
-  
-   
-
+     */
+    //printf("Value of Directory: %08X\n", pageDir[1]);
 }
