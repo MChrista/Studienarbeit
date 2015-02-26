@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include "mmu.h"
+#define DEBUG
+
 
 
 uint32_t *page_directory;
@@ -56,6 +58,11 @@ void pageFault( int virtualAddr, uint32_t page_directory[] ){
 
 
 int init_paging() {
+#ifdef DEBUG
+    printf("Debugging Modus");
+#else
+    printf("Normal Modus");
+#endif
     // Initialize Page Directoy
     uint32_t local_directory[1024] __attribute__((align(4096)));
     page_directory = local_directory;
@@ -74,8 +81,8 @@ int init_paging() {
     }
     
     /*Access to Page Table
-     *int *pointer = page_tables[0];
-     **(pointer+1) = 100;    
+     * int *pointer = page_tables[0];
+     * *(pointer+1) = 100;    
      */
     
     
