@@ -27,18 +27,31 @@ int main(int argc, char *argv[]){
         }
     }
     
-    /*
+    
     char str[100];
     
-    do{
+    while(1){
         memset(&str[0],0,sizeof(str));
-        printf("Paging>");
+        printf("Paging> ");
         scanf("%s", str);
-        printf( "\nYou entered: %s\n", str);
+        //printf( "You entered: %s", str);
+        char *ptr = strtok(str, " ");
+        while(ptr != NULL){
+            switch(ptr[0]){
+                case 'p': 
+                    printf("page\n");
+                    break;
+                case 'd': printf("directory\n");break;
+                case 'e': return 0;
+                default: break;
+            }
+            ptr = strtok(NULL," ");
+        }
+            
           // Testfälle
-    }while(strcmp(str , "exit"));
+    }
     //Float: %.2f
-    */
+    
 
     return 0;
 
