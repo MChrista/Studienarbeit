@@ -3,14 +3,30 @@
 #include <inttypes.h>
 #include <string.h>
 #include "mmu.h"
+#define DEBUG
 
 
 
+int isMemoryAddress(int memoryAddress);
+int convertCharToHex(char *args);
 
-
-
-int main(){
-    init_paging();
+int main(int argc, char *argv[]){
+    //init_paging();
+    
+    int i;
+    for(i=1;i<argc;i++){
+        int memoryAddress = convertCharToHex(argv[i]);
+#ifdef DEBUG
+        printf("Memory Addresse is: %x\n",memoryAddress);
+        //isMemoryAddress(argv[i]);
+        convertCharToHex(argv[i]);
+        //printf("\n%s",argv[i]);
+#endif
+        if(isMemoryAddress(memoryAddress) == 0){
+            //call paging
+        }
+    }
+    
     /*
     char str[100];
     
@@ -28,66 +44,29 @@ int main(){
 
 }
 
-/*
- * TUTORIAL Schachbrett
- * 
-void printField(int *field);
-void move(int *field, int *posX, int *posY, char zug);
-
-int main() {
-
-	int field[8][8] = { 0 }, posX=0, posY=0;
-	char zug;
-
-	// setzen der Spielfigur
-	field[posY][posX] = 1;
-
-	printf("\nBeenden mit x\n");
-
-	do {
-		printField(&field[0][0]);
-		printf("\nZug [w hoch, a links, s runter, d rechts]: ");
-		scanf("%c", &zug);
-		move(&field[0][0], &posX, &posY, zug);		
-	}while(zug != 'x');
-
-	return 0;
+int convertCharToHex(char* args){
+    char c;
+    int result = (int)strtol(args, NULL, 16);
+    /*
+     *  If we want to use Prefix
+        const char *hexstring = "0xabcdef0";
+        int number = (int)strtol(hexstring, NULL, 0); 
+    }
+     */
+#ifdef DEBUG
+    printf("Der Hexstring ist: %x\n",result);
+#endif
+    return result;
 }
 
-
-// Ausgabe Spielfeld
-void printField(int *field) {
-	printf("\n");
-	int i, j;
-	// Schleife fuer Zeilen, Y-Achse
-	for(i=0; i<8; i++) {
-		// Schleife fuer Spalten, X-Achse
-		for(j=0; j<8; j++) {
-			printf("%d ", *(field+i*8+j));
-		}
-		printf("\n");
-	}	
+int isMemoryAddress(int memoryAddress){
+    if(memoryAddress >= 0 && memoryAddress <= 0xFFFFFFFF){
+        return 0;
+    }else{
+#ifdef DEBUG
+        printf("Memory Address %x is not in range",memoryAddress);
+#endif
+        return 1;
+    }
 }
 
-// Spielfigur bewegen
-void move(int *field, int *posX, int *posY, char zug) {
-	// alte Position loeschen
-	*(field + *posY * 8 + *posX) = 0;
-	
-	// neue Position bestimmen
-	switch(zug) {
-		case 'w': (*posY)--; break;
-		case 'a': (*posX)--; break;
-		case 's': (*posY)++; break;
-		case 'd': (*posX)++; break;
-	}
-
-	// Grenzueberschreitung pruefen
-	if(*posX < 0) *posX = 7;
-	if(*posX > 7) *posX = 0;
-	if(*posY < 0) *posY = 7;
-	if(*posY > 7) *posY = 0;
-
-	// neue Position setzen
-	*(field + *posY * 8 + *posX) = 1;
-}*/
