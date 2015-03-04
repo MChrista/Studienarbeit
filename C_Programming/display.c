@@ -4,6 +4,7 @@
 #include <string.h>
 #include "mmu.h"
 #define DEBUG
+#define KernelEntwicklung
 
 
 
@@ -11,8 +12,8 @@ int isMemoryAddress(int memoryAddress);
 int convertCharToHex(char *args);
 
 int main(int argc, char *argv[]){
-    //init_paging();
-    
+    init_paging();
+#ifndef KernelEntwicklung
     int i;
     for(i=1;i<argc;i++){
         int memoryAddress = convertCharToHex(argv[i]);
@@ -41,9 +42,13 @@ int main(int argc, char *argv[]){
                 case 'p': 
                     printf("page\n");
                     break;
-                case 'd': printf("directory\n");break;
-                case 'e': return 0;
-                default: break;
+                case 'd': 
+                    printf("directory\n");
+                    break;
+                case 'e': 
+                    return 0;
+                default: 
+                    break;
             }
             ptr = strtok(NULL," ");
         }
@@ -51,14 +56,13 @@ int main(int argc, char *argv[]){
           // Testfälle
     }
     //Float: %.2f
-    
+#endif
 
     return 0;
 
 }
 
 int convertCharToHex(char* args){
-    char c;
     int result = (int)strtol(args, NULL, 16);
     /*
      *  If we want to use Prefix

@@ -67,15 +67,23 @@ int init_paging() {
     uint32_t local_directory[1024] __attribute__((align(4096)));
     page_directory = local_directory;
     
+    //Set Directory to blank
+    for(int i=0; i<1024;i++){
+        *(page_directory+i) = *(page_directory+i) & 0x00000000;
+    }
+    
     
     
     //Copy Kernel to First Page
     uint32_t kernel_page_table[1024] __attribute__((align(4096)));
     
+    //for the first MB
+    
+    
     
     
     // Initialize Pool of Pages
-    for(int i = 0;i < NumberOfPageTables; i++){
+    for(int i = 0;i < NumberOfPageTables-1; i++){
         uint32_t page_table[1024] __attribute__((align(4096)));
         page_tables[i] = page_table;
     }
