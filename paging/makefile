@@ -13,7 +13,8 @@ test:
 	$(CC) $(CFLAGS) $(LIBS) ./src/paging.c ./lib/seatest.c ./test/paging_test.c -o ./build/test/paging_test
 
 clean:
-	rm ./build/src/*
 	rm ./build/test/*
+	rm ./build/src/*
+
 
 .PHONY: all test clean
