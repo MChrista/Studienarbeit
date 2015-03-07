@@ -1,12 +1,19 @@
 # set global variables
+LIBS=-I./lib -I./src
 CC=gcc
-CFLAGS=-c -Wall
+CFLAGS=-Wall
 
-all: paging
-	$(CC) ./build/paging.o -o ./build/paging
+all: main
+	$(CC) ./build/src/paging.o -o ./build/src/paging
 
-paging:
-	$(CC) $(CFLAGS) ./src/paging.c -o ./build/paging.o
+main:
+	$(CC) $(CFLAGS) ./src/paging.c -o ./build/src/paging.o
+
+test:
+	$(CC) $(CFLAGS) $(LIBS) ./src/paging.c ./lib/seatest.c ./test/paging_test.c -o ./build/test/paging_test
 
 clean:
-	rm ./build/*
+	rm ./build/src/*
+	rm ./build/test/*
+
+.PHONY: all test clean

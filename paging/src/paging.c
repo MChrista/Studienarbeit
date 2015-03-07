@@ -1,7 +1,7 @@
 #include <stdio.h>
 
-int main()
+// function to test - to see if test linking works
+int add(int x, int y)
 {
-  printf("hello world\n");
-  return 0;
+  return x + y + 1;
 }
