@@ -1,7 +1,7 @@
 # set global variables
 LIBS=-I./lib -I./src
 CC=gcc
-CFLAGS=-Wall
+CFLAGS=-Wall -std=c99
 
 all: main
 	$(CC) ./build/src/paging.o -o ./build/src/paging

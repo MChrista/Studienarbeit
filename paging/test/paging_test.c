@@ -21,6 +21,29 @@ void test_two()
         assert_int_equal( 2, 2);
 }
 
+// MMU Function
+void  test_convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
+  //printf("Page Dir Address %p\n",page_directory);
+  int page_offset = virtualAddr & 0x00000FFF;
+  //printf("Page Offset      : %08X\n", page_offset);
+  int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
+  //printf("Page Table Offset: %08X\n", page_table_offset);
+  int page_dir_offset = virtualAddr >> 22;
+  //printf("Page Dir Offset  : %08X\n", page_dir_offset);
+
+  
+  // if page_table cannot be found, throw page fault
+  if (!page_directory[page_dir_offset])
+  {
+      pageFault(virtualAddr, page_directory);
+  }
+  uint32_t * page_table = (void *) page_directory[page_dir_offset]; 
+  
+  //printf ("Page Dir Entry   : %p\n", page_table);
+  int page_entry = * ((page_table) + page_table_offset);
+  //printf ("Page Table Entry : %p\n", page_entry);
+}
+
 /* create a test fixture */
 
 void test_fixture_math( void )
@@ -28,6 +51,7 @@ void test_fixture_math( void )
         test_fixture_start();
         run_test(test_one);
         run_test(test_two);
+        //run_test(test_convertVirtualToPhysical);
         test_fixture_end();
 }
 
