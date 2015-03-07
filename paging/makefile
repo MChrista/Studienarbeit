@@ -8,9 +8,6 @@ all: test main
 main: paging
 	$(CC) $(CFLAGS) ./build/src/paging.o ./src/display.c -o ./build/src/display
 
-display:
-	$(CC) $(CFLAGS) ./src/display.c -o ./build/src/display.o
-
 paging:
 	$(CC) $(CFLAGS) -c ./src/paging.c -o ./build/src/paging.o
 
