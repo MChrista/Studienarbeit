@@ -1,14 +1,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <math.h>
 #include "mmu.h"
 #define DEBUG
 
 
 
-uint32_t *page_directory;
+
 const int NumberOfPageTables = 10;
-int page_tables[10];
+
+uint32_t page_directory[1024] __attribute__((aligned(0x1000)));
+uint32_t page_tables[1024] __attribute__((aligned(0x1000)));
+uint32_t kernel_page_table[1024] __attribute__((align(0x1000)));
+
+
+
+void bin_output(int val) 
+{
+    int i;
+    char str[33];
+    for (i = 31; i >= 0; i--)
+	str[31-i] = '0' + ((val >> i) & 0x1);
+    str[32] = 0;
+    puts(str);
+    return;
+}
 
 // MMU Function
 int convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory ) {
@@ -49,9 +66,9 @@ void pageFault( int virtualAddr, uint32_t page_directory[] ){
        
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
     
-    int physical_page_addr = malloc(0x1000);
+    //int physical_page_addr = malloc(0x1000);
     //printf("Physical Page Addr: %p\n", physical_page_addr & 0xFFFFF000 | 3 );
-    page_table[page_table_offset] = (physical_page_addr & 0xFFFFF000 | 3) ;
+    //page_table[page_table_offset] = (physical_page_addr & 0xFFFFF000 | 3) ;
     
      
 }
@@ -59,33 +76,43 @@ void pageFault( int virtualAddr, uint32_t page_directory[] ){
 
 int init_paging() {
 #ifdef DEBUG
-    printf("Debugging Modus");
+    printf("Debugging Modus\n");
 #else
     printf("Normal Modus");
 #endif
     // Initialize Page Directoy
-    uint32_t local_directory[1024] __attribute__((align(4096)));
-    page_directory = local_directory;
     
     //Set Directory to blank
     for(int i=0; i<1024;i++){
         *(page_directory+i) = *(page_directory+i) & 0x00000000;
     }
     
+    for(int i=0; i<4;i++){
+        printf("%p\n",(page_directory+i));
+    }
+    
     
     
     //Copy Kernel to First Page
-    uint32_t kernel_page_table[1024] __attribute__((align(4096)));
+    
     
     //for the first MB
+    for(int i = 0; i<256; i++){
+        kernel_page_table[i] = (uint32_t)(i * pow(2,11) + 3);
+    }
+    *(page_directory) = kernel_page_table;
+    printf("Kernel Page Table Address: %p\n", kernel_page_table);
+    printf("Page Directory Address: %p\n", *(page_directory));
+    
     
     
     
     
     // Initialize Pool of Pages
     for(int i = 0;i < NumberOfPageTables-1; i++){
-        uint32_t page_table[1024] __attribute__((align(4096)));
+        static uint32_t page_table[1024] __attribute__((align(4096)));
         page_tables[i] = page_table;
+        printf("Page Table Address: %p\n", page_table);
     }
     
     /*Access to Page Table
