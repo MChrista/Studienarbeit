@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <inttypes.h>
 #include "seatest.h"
 #include "paging.h"
 
@@ -31,14 +32,14 @@ void  test_convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory )
   int page_dir_offset = virtualAddr >> 22;
   //printf("Page Dir Offset  : %08X\n", page_dir_offset);
 
-  
+
   // if page_table cannot be found, throw page fault
   if (!page_directory[page_dir_offset])
   {
       pageFault(virtualAddr, page_directory);
   }
-  uint32_t * page_table = (void *) page_directory[page_dir_offset]; 
-  
+  uint32_t * page_table = (void *) page_directory[page_dir_offset];
+
   //printf ("Page Dir Entry   : %p\n", page_table);
   int page_entry = * ((page_table) + page_table_offset);
   //printf ("Page Table Entry : %p\n", page_entry);
