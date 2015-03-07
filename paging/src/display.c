@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <string.h>
-#include "mmu.h"
+#include "paging.h"
 #define DEBUG
 #define KernelEntwicklung
 
