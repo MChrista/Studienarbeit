@@ -30,17 +30,25 @@ void bin_output(int val)
 
 
 void pageFault( int virtualAddr, uint32_t page_directory[] ){
-    printf("Page Fault at: %p\n", virtualAddr );
-    
-    // Create Page Table
-    uint32_t page_table[1024] __attribute__((align(4096)));
+#ifdef DEBUG
+    printf("Page Fault at: %i\n", virtualAddr );
+#endif
     int page_dir_offset = virtualAddr >> 22;
-    page_directory[page_dir_offset] = ((unsigned int)page_table) ;
-    //printf("Physical Page Table Address: %p\n", page_table );
-    
-    // Create Page in Page Table
-       
-    int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
+    if( (page_directory[page_dir_offset] & 0x1) == 1 ){ //if present Bit is set
+        printf("Page Table is present\n");
+        uint32_t *page_table = &page_directory[page_dir_offset];
+        int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
+        
+        if((*(page_table + page_table_offset) & 0x1) == 1){ //if present Bit is set
+            printf("Page is already present");
+        }else{
+            // Get next free Page and return new virtual Adress
+        }
+        
+        
+    }else{
+        printf("Create new Page Table\n");
+    }
     
     //int physical_page_addr = malloc(0x1000);
     //printf("Physical Page Addr: %p\n", physical_page_addr & 0xFFFFF000 | 3 );
