@@ -36,7 +36,7 @@ void  test_convertVirtualToPhysical( int virtualAddr, uint32_t *page_directory )
   // if page_table cannot be found, throw page fault
   if (!page_directory[page_dir_offset])
   {
-      pageFault(virtualAddr, page_directory);
+      pageFault(virtualAddr);
   }
   uint32_t * page_table = (void *) page_directory[page_dir_offset];
 

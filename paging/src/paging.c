@@ -13,7 +13,10 @@ const int NumberOfPageTables = 10;
 uint32_t page_directory[1024] __attribute__((aligned(0x1000)));
 uint32_t page_tables[1024] __attribute__((aligned(0x1000)));
 uint32_t kernel_page_table[1024] __attribute__((align(0x1000)));
+uint32_t programm_page_table[1024] __attribute__((align(0x1000)));
 
+int startaddress = 0x2000000;
+int page_counter = 0;
 
 
 void bin_output(int val) 
@@ -29,25 +32,36 @@ void bin_output(int val)
 
 
 
-void pageFault( int virtualAddr, uint32_t page_directory[] ){
+void pageFault( int virtualAddr){
 #ifdef DEBUG
-    printf("Page Fault at: %i\n", virtualAddr );
+    printf("\nPage Fault at: %x\n", virtualAddr );
 #endif
     int page_dir_offset = virtualAddr >> 22;
+    int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
+
+    printf("Page directory Offset is: %i\n", page_dir_offset);
+    printf("Page table Offset is: %i\n", page_table_offset);
+#ifdef DEBUG_Detail
+    printf("Page Directory offset Address is: %x\n",page_directory[page_dir_offset] );
+    printf("Page Directory present Address is: %i\n",(page_directory[page_dir_offset] & 0x1) );
+#endif
     if( (page_directory[page_dir_offset] & 0x1) == 1 ){ //if present Bit is set
         printf("Page Table is present\n");
-        uint32_t *page_table = &page_directory[page_dir_offset];
-        int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
-        
+        uint32_t *page_table;
+        page_table = page_directory[page_dir_offset] & 0xFFFFF000;
         if((*(page_table + page_table_offset) & 0x1) == 1){ //if present Bit is set
-            printf("Page is already present");
+            printf("Page is already present at physical address %x\n", *(page_table + page_table_offset) & 0xFFFFF000);
         }else{
+            uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + 3);
+            *(page_table + page_table_offset) = next_address;
+            printf("New Page were reserved at physical address %x\n", next_address & 0xFFFFF000);
             // Get next free Page and return new virtual Adress
         }
-        
-        
     }else{
-        printf("Create new Page Table\n");
+        uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + 3);
+        programm_page_table[page_table_offset] = next_address;
+        page_directory[page_dir_offset] = (uint32_t)programm_page_table | 3;
+        printf("New Page were reserved at physical Address %x\n", next_address & 0xFFFFF000);
     }
     
     //int physical_page_addr = malloc(0x1000);
@@ -96,8 +110,8 @@ int init_paging() {
     
     // Initialize Pool of Pages - Does not work at the moment
     for(int i = 0;i < NumberOfPageTables-1; i++){
-        uint32_t page_table[1024] __attribute__((align(4096)));
-        page_tables[i] = page_table;
+        //uint32_t page_table[1024] __attribute__((align(4096)));
+        //page_tables[i] = page_table;
         //printf("Page Table Address: %p\n", page_table);
     }
     

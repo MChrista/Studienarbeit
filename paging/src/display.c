@@ -13,8 +13,12 @@ int convertCharToHex(char *args);
 
 int main(int argc, char *argv[]){
     init_paging();
+    pageFault(0x08048000);
+    pageFault(0x08048000);
+    pageFault(0x08048004);
+    pageFault(0x08049004);
+    pageFault(0x08049004);
 #ifndef KernelEntwicklung
-    int i;
     for(i=1;i<argc;i++){
         int memoryAddress = convertCharToHex(argv[i]);
 #ifdef DEBUG
