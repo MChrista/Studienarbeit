@@ -6,17 +6,30 @@
 #define DEBUG
 
 
-
-
-const int NumberOfPageTables = 10;
+typedef struct page
+{
+   uint32_t present    : 1;   // Page present in memory
+   uint32_t rw         : 1;   // Read-only if clear, readwrite if set
+   uint32_t user       : 1;   // Supervisor level only if clear
+   uint32_t accessed   : 1;   // Has the page been accessed since last refresh?
+   uint32_t dirty      : 1;   // Has the page been written to since last refresh?
+   uint32_t unused     : 7;   // Amalgamation of unused and reserved bits
+   uint32_t frame      : 20;  // Frame address (shifted right 12 bits)
+} page_t;
 
 uint32_t page_directory[1024] __attribute__((aligned(0x1000)));
-uint32_t page_tables[1024] __attribute__((aligned(0x1000)));
-uint32_t kernel_page_table[1024] __attribute__((align(0x1000)));
-uint32_t programm_page_table[1024] __attribute__((align(0x1000)));
 
+//Create Page Tables
+page_t kernel_page_table[1024] __attribute__((align(0x1000)));
+page_t programm_page_table[1024] __attribute__((align(0x1000)));
+page_t stack_page_table[1024] __attribute__((align(0x1000)));
+
+//General Parameters
 int startaddress = 0x2000000;
 int page_counter = 0;
+int numOfPages = 20;
+
+
 
 
 void bin_output(int val) 
@@ -29,6 +42,8 @@ void bin_output(int val)
     puts(str);
     return;
 }
+
+
 
 
 
@@ -48,7 +63,7 @@ void pageFault( int virtualAddr){
     if( (page_directory[page_dir_offset] & 0x1) == 1 ){ //if present Bit is set
         printf("Page Table is present\n");
         uint32_t *page_table;
-        page_table = page_directory[page_dir_offset] & 0xFFFFF000;
+        page_table = (uint32_t *)(page_directory[page_dir_offset] & 0xFFFFF000);
         if((*(page_table + page_table_offset) & 0x1) == 1){ //if present Bit is set
             printf("Page is already present at physical address %x\n", *(page_table + page_table_offset) & 0xFFFFF000);
         }else{
@@ -58,10 +73,7 @@ void pageFault( int virtualAddr){
             // Get next free Page and return new virtual Adress
         }
     }else{
-        uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + 3);
-        programm_page_table[page_table_offset] = next_address;
-        page_directory[page_dir_offset] = (uint32_t)programm_page_table | 3;
-        printf("New Page were reserved at physical Address %x\n", next_address & 0xFFFFF000);
+        printf("Segmentation Fault. Page Table is not present.\n");
     }
     
     //int physical_page_addr = malloc(0x1000);
@@ -70,9 +82,16 @@ void pageFault( int virtualAddr){
     
      
 }
+/*
+int clear_address(int virtualAddr){
+    int page_dir_offset = virtualAddr >> 22;
+    int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
+    uint32_t *page_table;
+    page_table = (uint32_t *)page_directory[page_dir_offset] & 0xFFFFF000;
+}*/
 
 
-int init_paging() {
+uint32_t* init_paging() {
 #ifdef DEBUG
     printf("Debugging Modus\n");
 #else
@@ -99,21 +118,23 @@ int init_paging() {
     
     //for the first MB
     for(int i = 0; i<256; i++){
-        kernel_page_table[i] = (uint32_t)(i * 0x1000 + 3);
+        kernel_page_table[i].present = 1;
+        kernel_page_table[i].rw = 1;
+        kernel_page_table[i].frame= (uint32_t)i * 0x1;
+       // kernel_page_table[i] = (uint32_t)(i * 0x1000 + 3);
     }
     *(page_directory) = (uint32_t)kernel_page_table | 3;
+    *(page_directory+32) = (uint32_t)programm_page_table | 3;
+    *(page_directory+1023) = (uint32_t)stack_page_table | 3;
     
 #ifdef DEBUG
+    printf("Kernel Page Table Address: %x\n", kernel_page_table[1]);
     printf("Kernel Page Table Address: %p\n", kernel_page_table);
     printf("Page Directory Address: %x\n", *(page_directory));
 #endif
-    
-    // Initialize Pool of Pages - Does not work at the moment
-    for(int i = 0;i < NumberOfPageTables-1; i++){
-        //uint32_t page_table[1024] __attribute__((align(4096)));
-        //page_tables[i] = page_table;
-        //printf("Page Table Address: %p\n", page_table);
-    }
+   
+    printf("Address of page Directory%p\n",page_directory);
+    return page_directory;
     
     /*Access to Page Table
      * int *pointer = page_tables[0];

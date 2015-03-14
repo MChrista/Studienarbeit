@@ -1,4 +1,4 @@
 #include <inttypes.h>
 
 void pageFault( int);
-int init_paging();
+uint32_t* init_paging();

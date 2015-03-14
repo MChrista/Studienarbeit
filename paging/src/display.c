@@ -12,7 +12,7 @@ int isMemoryAddress(int memoryAddress);
 int convertCharToHex(char *args);
 
 int main(int argc, char *argv[]){
-    init_paging();
+    printf("Init Paging Address %p\n",init_paging());
     pageFault(0x08048000);
     pageFault(0x08048000);
     pageFault(0x08048004);
