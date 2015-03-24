@@ -5,15 +5,29 @@
 #include "paging.h"
 
 
+
+typedef struct page
+{
+   uint32_t present    : 1;   // Page present in memory
+   uint32_t rw         : 1;   // Read-only if clear, readwrite if set
+   uint32_t user       : 1;   // Supervisor level only if clear
+   uint32_t accessed   : 1;   // Has the page been accessed since last refresh?
+   uint32_t dirty      : 1;   // Has the page been written to since last refresh?
+   uint32_t unused     : 7;   // Amalgamation of unused and reserved bits
+   uint32_t frame      : 20;  // Frame address (shifted right 12 bits)
+} page_t;
+
+
+
 /*
  * Declaration of Page Directory and Page tables
  */
 uint32_t page_directory[1024] __attribute__((aligned(0x1000)));
 
 //Create Page Tables
-uint32_t kernel_page_table[1024] __attribute__((align(0x1000)));
-uint32_t programm_page_table[1024] __attribute__((align(0x1000)));
-uint32_t stack_page_table[1024] __attribute__((align(0x1000)));
+page_t kernel_page_table[1024] __attribute__((align(0x1000)));
+page_t programm_page_table[1024] __attribute__((align(0x1000)));
+page_t stack_page_table[1024] __attribute__((align(0x1000)));
 
 //General Parameters
 int startaddress = 0x2000000; //Startaddress for Physical Memory
@@ -37,32 +51,21 @@ void pageFault( int virtualAddr){
     printf("Page Directory offset Address is: %x\n",page_directory[page_dir_offset] );
     printf("Page Directory present Address is: %i\n",(page_directory[page_dir_offset] & 0x1) );
 #endif
-    
-    if( (page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT ){ //if present Bit is set
+    if( (page_directory[page_dir_offset] & 0x1) == 1 ){ //if present Bit is set
 #if DEBUG >= 1
         printf("Page Table is present\n");
 #endif
         uint32_t *page_table;
         page_table = (uint32_t *)(page_directory[page_dir_offset] & 0xFFFFF000);
-        if(IS_PRESENT(*(page_table + page_table_offset) == 0)){
-            printf("Makro sagt present\n");
-        }else{
-            printf("Makro sagt nicht present\n");
-        }
-        if((*(page_table + page_table_offset) & PRESENT_BIT) == PRESENT_BIT){ //if present Bit is set
+        if((*(page_table + page_table_offset) & 0x1) == PAGE_PRESENT){ //if present Bit is set
 #if DEBUG >= 1
             printf("Page is already present at physical address %x\n", *(page_table + page_table_offset) & 0xFFFFF000);
 #endif
         }else{
-            if(page_counter <= numOfPages){
-                uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
-                *(page_table + page_table_offset) = next_address;
-                printf("New Page were reserved at physical address %x\n", next_address & 0xFFFFF000);
-                // Get next free Page and return new virtual Adress
-            }else{
-                printf("The Maximum Number of Pages have been reached already. This Page can't be reserved");
-            }
-            
+            uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PAGE_PRESENT + PAGE_RW);
+            *(page_table + page_table_offset) = next_address;
+            printf("New Page were reserved at physical address %x\n", next_address & 0xFFFFF000);
+            // Get next free Page and return new virtual Adress
         }
     }else{
         printf("Segmentation Fault. Page Table is not present.\n");
@@ -102,11 +105,14 @@ uint32_t* init_paging() {
     //Copy Kernel to First Page Table
     //for the first MB
     for(int i = 0; i<256; i++){
-       kernel_page_table[i] = (uint32_t)(i * 0x1000 + 3);
+        kernel_page_table[i].present = 1;
+        kernel_page_table[i].rw = 1;
+        kernel_page_table[i].frame= (uint32_t)i * 0x1;
+       // kernel_page_table[i] = (uint32_t)(i * 0x1000 + 3);
     }
-    *(page_directory) = (uint32_t)kernel_page_table | PRESENT_BIT | RW_BIT;
-    *(page_directory+32) = (uint32_t)programm_page_table | PRESENT_BIT | RW_BIT;
-    *(page_directory+1023) = (uint32_t)stack_page_table | PRESENT_BIT | RW_BIT;
+    *(page_directory) = (uint32_t)kernel_page_table | PAGE_PRESENT | PAGE_RW;
+    *(page_directory+32) = (uint32_t)programm_page_table | PAGE_PRESENT | PAGE_RW;
+    *(page_directory+1023) = (uint32_t)stack_page_table | PAGE_PRESENT | PAGE_RW;
     
     
     

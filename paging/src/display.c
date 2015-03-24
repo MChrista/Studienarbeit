@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include "paging.h"
-#define DEBUG
+
 #define KernelEntwicklung
 
 
