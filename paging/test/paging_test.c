@@ -3,7 +3,7 @@
 #include "paging.h"
 
 void testPaging( int virtualAddr, uint32_t * page_directory ){
-    	int page_dir_offset = virtualAddr >> 22;
+    	int page_dir_offset = (virtualAddr & 0xFFC00000) >> 22;
 	int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
 
     	printf("0x%08X", virtualAddr );
