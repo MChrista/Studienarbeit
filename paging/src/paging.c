@@ -23,9 +23,9 @@ int numOfPages = 20; //Maximum Number of Pages
 
 
 void pageFault( int virtualAddr){
-
+#if DEBUG >= 1
     printf("\nPage Fault at: %x\n", virtualAddr );
-
+#endif
     int page_dir_offset = virtualAddr >> 22;
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
     
@@ -44,11 +44,13 @@ void pageFault( int virtualAddr){
 #endif
         uint32_t *page_table;
         page_table = (uint32_t *)(page_directory[page_dir_offset] & 0xFFFFF000);
+#if DEBUG >= 2
         if(IS_PRESENT(*(page_table + page_table_offset) == 0)){
             printf("Makro sagt present\n");
         }else{
             printf("Makro sagt nicht present\n");
         }
+#endif
         if((*(page_table + page_table_offset) & PRESENT_BIT) == PRESENT_BIT){ //if present Bit is set
 #if DEBUG >= 1
             printf("Page is already present at physical address %x\n", *(page_table + page_table_offset) & 0xFFFFF000);
@@ -57,10 +59,14 @@ void pageFault( int virtualAddr){
             if(page_counter <= numOfPages){
                 uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
                 *(page_table + page_table_offset) = next_address;
-                printf("New Page were reserved at physical address %x\n", next_address & 0xFFFFF000);
-                // Get next free Page and return new virtual Adress
+#if DEBUG >= 1      
+          printf("New Page were reserved at physical address %x\n", next_address & 0xFFFFF000);
+#endif             
+   // Get next free Page and return new virtual Adress
             }else{
+#if DEBUG >= 1
                 printf("The Maximum Number of Pages have been reached already. This Page can't be reserved");
+#endif
             }
             
         }
