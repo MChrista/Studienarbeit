@@ -26,7 +26,7 @@ void pageFault( int virtualAddr){
 #if DEBUG >= 1
     printf("\nPage Fault at: %x\n", virtualAddr );
 #endif
-    int page_dir_offset = virtualAddr >> 22;
+    int page_dir_offset = (virtualAddr >> 22) & 0x3FF;
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
     
 #if DEBUG >= 1
