@@ -19,6 +19,7 @@ uint32_t stack_page_table[1024] __attribute__((align(0x1000)));
 int startaddress = 0x2000000; //Startaddress for Physical Memory
 int page_counter = 0;
 int numOfPages = 20; //Maximum Number of Pages
+uint32_t page_bitfield[1024][32] = {0};
 
 
 
@@ -81,6 +82,45 @@ int clear_address(int virtualAddr){
     uint32_t *page_table;
     page_table = (uint32_t *)page_directory[page_dir_offset] & 0xFFFFF000;
 }*/
+
+int setPresentBit(int pde_offset, int pte_offset, int bool){
+    if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
+        printf("Offset is no in range\n");
+        return 1;     
+    }else{
+        int index = pte_offset/32;
+        if(bool == 0){
+            page_bitfield[pde_offset][index] |= 0 << (pte_offset%32);
+        }else{
+            page_bitfield[pde_offset][index] |= 1 << (pte_offset%32);
+        }
+        
+#if DEBUG >= 1
+        printf("Index in PDE is %d\n",pde_offset);
+        printf("Index in PTE is %d\n",index);
+        printf("New Value is %d\n",page_bitfield[pde_offset][index]);
+#endif
+        return 0;
+        
+    }
+}
+
+int isPresentBit(int pde_offset, int pte_offset){
+    if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
+        printf("Offset is no in range\n");
+        return 1;     
+    }else{
+        int index = pte_offset/32;
+        
+#if DEBUG >= 1
+        printf("Index in PDE is %d\n",pde_offset);
+        printf("Index in PTE is %d\n",index);
+#endif
+        return ((page_bitfield[pde_offset][index] & (1 << (pte_offset%32)) ) != 0);
+    }
+}
+
+
 
 
 uint32_t* init_paging() {

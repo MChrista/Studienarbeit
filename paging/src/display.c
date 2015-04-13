@@ -12,12 +12,28 @@ int isMemoryAddress(int memoryAddress);
 int convertCharToHex(char *args);
 
 int main(int argc, char *argv[]){
+    printf("Page present Bit is %d\n", isPresentBit(0,0));
+    setPresentBit(0,0,1);
+    printf("Page present Bit is %d\n", isPresentBit(0,0));
+    setPresentBit(0,0,1);
+    printf("Page present Bit is %d\n", isPresentBit(0,0));
+    setPresentBit(0,1,1);
+    setPresentBit(0,2,1);
+    setPresentBit(1,0,1);
+    setPresentBit(1023,1023,1);
+    
+    
+    
+    
+    
+    /*
     printf("Init Paging Address %p\n",init_paging());
     pageFault(0xFFFFFFFC);
     pageFault(0xFFFFFFFC);
     pageFault(0xFFFFFFFC);
     pageFault(0xFFFFFFFC);
     pageFault(0xFFFFFFFC);
+*/
 #ifndef KernelEntwicklung
     for(i=1;i<argc;i++){
         int memoryAddress = convertCharToHex(argv[i]);
