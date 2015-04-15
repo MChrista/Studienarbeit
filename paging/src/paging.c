@@ -22,7 +22,6 @@ int numOfPages = 20; //Maximum Number of Pages
 uint32_t page_bitfield[1024][32] = {0};
 
 
-
 void pageFault( int virtualAddr){
 #if DEBUG >= 1
     printf("\nPage Fault at: %x\n", virtualAddr );
@@ -89,10 +88,10 @@ int setPresentBit(int pde_offset, int pte_offset, int bool){
         return 1;     
     }else{
         int index = pte_offset/32;
-        if(bool == 0){
-            page_bitfield[pde_offset][index] |= 0 << (pte_offset%32);
+        if(bool == NOT_PRESENT_BIT){
+            page_bitfield[pde_offset][index] |= NOT_PRESENT_BIT << (pte_offset%32);
         }else{
-            page_bitfield[pde_offset][index] |= 1 << (pte_offset%32);
+            page_bitfield[pde_offset][index] |= PRESENT_BIT << (pte_offset%32);
         }
         
 #if DEBUG >= 1
@@ -116,7 +115,7 @@ int isPresentBit(int pde_offset, int pte_offset){
         printf("Index in PDE is %d\n",pde_offset);
         printf("Index in PTE is %d\n",index);
 #endif
-        return ((page_bitfield[pde_offset][index] & (1 << (pte_offset%32)) ) != 0);
+        return ((page_bitfield[pde_offset][index] & (PRESENT_BIT << (pte_offset%32)) ) != NOT_PRESENT_BIT);
     }
 }
 
@@ -126,10 +125,8 @@ int isPresentBit(int pde_offset, int pte_offset){
 uint32_t* init_paging() {
 #if DEBUG >= 1
     printf("Debugging Modus\n");
-#else
-    printf("Normal Modus\n");
 #endif
-    // Initialize Page Directoy
+    // Initialize Page Directory
     
     //Set Directory to blank
     for(int i=0; i<1024;i++){
@@ -150,9 +147,9 @@ uint32_t* init_paging() {
     for(int i = 0; i<256; i++){
        kernel_page_table[i] = (uint32_t)(i * 0x1000 + 3);
     }
-    *(page_directory) = (uint32_t)kernel_page_table | PRESENT_BIT | RW_BIT;
-    *(page_directory+32) = (uint32_t)programm_page_table | PRESENT_BIT | RW_BIT;
-    *(page_directory+1023) = (uint32_t)stack_page_table | PRESENT_BIT | RW_BIT;
+    *(page_directory + OFFSET_KERNEL_PT) = (uint32_t)kernel_page_table | PRESENT_BIT | RW_BIT;
+    *(page_directory + OFFSET_PROGRAMM_PT) = (uint32_t)programm_page_table | PRESENT_BIT | RW_BIT;
+    *(page_directory + OFFSET_STACK_PT) = (uint32_t)stack_page_table | PRESENT_BIT | RW_BIT;
     
     
     
