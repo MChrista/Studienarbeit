@@ -10,18 +10,12 @@
 
 int isMemoryAddress(int memoryAddress);
 int convertCharToHex(char *args);
+void testIsPresent();
+void testReplacePage();
 
 int main(int argc, char *argv[]){
-    printf("Page present Bit is %d\n", isPresentBit(0,0));
-    setPresentBit(0,0,1);
-    printf("Page present Bit is %d\n", isPresentBit(0,0));
-    setPresentBit(0,0,1);
-    printf("Page present Bit is %d\n", isPresentBit(0,0));
-    setPresentBit(0,1,1);
-    setPresentBit(0,2,1);
-    setPresentBit(1,0,1);
-    setPresentBit(1023,1023,1);
     
+    testReplacePage();
     
     
     
@@ -105,5 +99,50 @@ int isMemoryAddress(int memoryAddress){
 #endif
         return 1;
     }
+}
+
+
+void testReplacePage(){
+    printf("Start of testing replace pages");
+    init_paging();
+    pageFault(0x08048000);
+    pageFault(0x08049000);
+    pageFault(0x08050000);
+    pageFault(0x08051000);
+    printf("Four Pages are mapped\n");
+    pageFault(0x08052000);
+    pageFault(0x08053000);
+    pageFault(0x08052000);
+    pageFault(0x08050000);
+    printf("Next address is to replace\n");
+    pageFault(0x08049000);
+    pageFault(0x08049000);
+    pageFault(0x08053000);
+    
+    
+}
+
+void testIsPresent(){
+    //08048000
+    //20
+    //32
+    //2
+    //72
+    printf("Page present Bit is %d\n", isPresentBit(0x20,0x48));
+    setPresentBit(0x20,0x47,1);
+    setPresentBit(0x20,0x48,1);
+    setPresentBit(0x20,0x49,1);
+    printf("Page present Bit is %d\n", isPresentBit(0x20,0x47));
+    printf("Page present Bit is %d\n", isPresentBit(0x20,0x48));
+    printf("Page present Bit is %d\n", isPresentBit(0x20,0x49));
+    setPresentBit(0x20,0x48,0);
+    setPresentBit(0x20,0x49,0);
+    printf("Page present Bit is %d\n", isPresentBit(0x20,0x47));
+    printf("Page present Bit is %d\n", isPresentBit(0x20,0x48));
+    printf("Page present Bit is %d\n", isPresentBit(0x20,0x49));
+    setPresentBit(0,1,1);
+    setPresentBit(0,2,1);
+    setPresentBit(1,0,1);
+    setPresentBit(1023,1023,1);
 }
 

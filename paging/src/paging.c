@@ -16,10 +16,15 @@ uint32_t programm_page_table[1024] __attribute__((align(0x1000)));
 uint32_t stack_page_table[1024] __attribute__((align(0x1000)));
 
 //General Parameters
-int startaddress = 0x2000000; //Startaddress for Physical Memory
+int startaddress = 0x200000; //Startaddress for Physical Memory
 int page_counter = 0;
-int numOfPages = 20; //Maximum Number of Pages
+int numOfPages = 4; //Maximum Number of Pages
 uint32_t page_bitfield[1024][32] = {0};
+
+
+//Page replace parameters 
+int replace_pde_offset = 0;
+int replace_pte_offset = 512;
 
 
 void pageFault( int virtualAddr){
@@ -56,17 +61,60 @@ void pageFault( int virtualAddr){
             printf("Page is already present at physical address %x\n", *(page_table + page_table_offset) & 0xFFFFF000);
 #endif
         }else{
-            if(page_counter <= numOfPages){
+            if(page_counter < numOfPages){
                 uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
                 *(page_table + page_table_offset) = next_address;
+#if DEBUG >= 3
+                printf("Input Offsets are %d %d\n\n",page_dir_offset,page_table_offset);
+#endif
+                setPresentBit(page_dir_offset,page_table_offset,1);
 #if DEBUG >= 1      
           printf("New Page were reserved at physical address %x\n", next_address & 0xFFFFF000);
 #endif             
    // Get next free Page and return new virtual Adress
             }else{
 #if DEBUG >= 1
-                printf("The Maximum Number of Pages have been reached already. This Page can't be reserved");
+                printf("The Maximum Number of Pages have been reached already. This Page can't be reserved"); 
 #endif
+                //Get physical address of page you want to replace
+                do{
+                    replace_pte_offset++;
+                    if(replace_pte_offset > 1023){
+                        if(replace_pde_offset==1023){
+                            replace_pde_offset=0;
+                            replace_pte_offset=512;//Do not remove Kernel Pages
+                        }else{
+                            replace_pte_offset =0;
+                            replace_pde_offset++;
+                        }
+                        
+                    }
+                }while(!isPresentBit(replace_pde_offset,replace_pte_offset));
+#if DEBUG >= 3             
+                printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);
+#endif              
+                uint32_t *replace_page_table;
+                
+                replace_page_table = (uint32_t *)(page_directory[replace_pde_offset] & 0xFFFFF000);
+                uint32_t replace_phy_address = *(replace_page_table + replace_pte_offset) & 0xFFFFF000;
+                
+                //Remove old page
+                *(replace_page_table + replace_pte_offset) &= 0x0;
+                /*Map new page
+                 * Page Table is already present
+                 */
+#if DEBUG >= 3
+                printf("Removing physical Address %x \n", replace_phy_address);
+                printf("Input Offsets are %d %d\n",page_dir_offset,page_table_offset);
+#endif
+                *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
+                
+                setPresentBit(page_dir_offset,page_table_offset,1);
+                
+                
+                
+                
+                
             }
             
         }
@@ -89,15 +137,15 @@ int setPresentBit(int pde_offset, int pte_offset, int bool){
     }else{
         int index = pte_offset/32;
         if(bool == NOT_PRESENT_BIT){
-            page_bitfield[pde_offset][index] |= NOT_PRESENT_BIT << (pte_offset%32);
+            page_bitfield[pde_offset][index] &= (~(PRESENT_BIT << (pte_offset%32)));
         }else{
-            page_bitfield[pde_offset][index] |= PRESENT_BIT << (pte_offset%32);
+            page_bitfield[pde_offset][index] |= (PRESENT_BIT << (pte_offset%32));
         }
         
 #if DEBUG >= 1
         printf("Index in PDE is %d\n",pde_offset);
         printf("Index in PTE is %d\n",index);
-        printf("New Value is %d\n",page_bitfield[pde_offset][index]);
+        printf("New Value is %x\n",page_bitfield[pde_offset][index]);
 #endif
         return 0;
         
@@ -146,6 +194,7 @@ uint32_t* init_paging() {
     //for the first MB
     for(int i = 0; i<256; i++){
        kernel_page_table[i] = (uint32_t)(i * 0x1000 + 3);
+       setPresentBit(0,i,1);
     }
     *(page_directory + OFFSET_KERNEL_PT) = (uint32_t)kernel_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_PROGRAMM_PT) = (uint32_t)programm_page_table | PRESENT_BIT | RW_BIT;
