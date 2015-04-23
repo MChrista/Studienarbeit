@@ -4,7 +4,6 @@
 #include <math.h>
 #include "paging.h"
 
-
 /*
  * Declaration of Page Directory and Page tables
  */
@@ -133,7 +132,7 @@ int clear_address(int virtualAddr){
 int setPresentBit(int pde_offset, int pte_offset, int bool){
     if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
         printf("Offset is no in range\n");
-        return 1;     
+        return 0;     
     }else{
         int index = pte_offset/32;
         if(bool == NOT_PRESENT_BIT){
@@ -143,19 +142,19 @@ int setPresentBit(int pde_offset, int pte_offset, int bool){
         }
         
 #if DEBUG >= 1
-        printf("Index in PDE is %d\n",pde_offset);
-        printf("Index in PTE is %d\n",index);
-        printf("New Value is %x\n",page_bitfield[pde_offset][index]);
+        printf("PDE %d\t\t",pde_offset);
+        printf("PTE %d\t\t",index);
+        printf("Val %x\t\t",page_bitfield[pde_offset][index]);
 #endif
-        return 0;
-        
+
+        return 1;
     }
 }
 
 int isPresentBit(int pde_offset, int pte_offset){
     if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
         printf("Offset is no in range\n");
-        return 1;     
+        return 0;     
     }else{
         int index = pte_offset/32;
         
@@ -179,6 +178,13 @@ uint32_t* init_paging() {
     //Set Directory to blank
     for(int i=0; i<1024;i++){
         *(page_directory+i) = *(page_directory+i) & 0x00000000;
+    }
+    
+    //set Bitfield to blank
+    for(int i=0; i<1024;i++){
+        for(int j=0; j<32;j++){
+            page_bitfield[i][j]=0;
+        }
     }
     
 #if DEBUG >= 1

@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #define DEBUG 0
+#define TESTBITFIELD 1
 #define PRESENT_BIT 1
 #define NOT_PRESENT_BIT 0
 #define RW_BIT 2
