@@ -17,7 +17,7 @@ uint32_t stack_page_table[1024] __attribute__((align(0x1000)));
 //General Parameters
 int startaddress = 0x200000; //Startaddress for Physical Memory
 int page_counter = 0;
-int numOfPages = 4; //Maximum Number of Pages
+int maxNumberOfPages = 4; //Maximum Number of Pages
 uint32_t page_bitfield[1024][32] = {0};
 
 
@@ -60,7 +60,7 @@ void pageFault( int virtualAddr){
             printf("Page is already present at physical address %x\n", *(page_table + page_table_offset) & 0xFFFFF000);
 #endif
         }else{
-            if(page_counter < numOfPages){
+            if(page_counter < maxNumberOfPages){
                 uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
                 *(page_table + page_table_offset) = next_address;
 #if DEBUG >= 3
@@ -91,43 +91,31 @@ void pageFault( int virtualAddr){
                 }while(!isPresentBit(replace_pde_offset,replace_pte_offset));
 #if DEBUG >= 3             
                 printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);
-#endif              
-                uint32_t *replace_page_table;
-                
-                replace_page_table = (uint32_t *)(page_directory[replace_pde_offset] & 0xFFFFF000);
-                uint32_t replace_phy_address = *(replace_page_table + replace_pte_offset) & 0xFFFFF000;
+#endif            
+                //Get page table, in which is the page you want to replace and get the physical address of this page
+                uint32_t *temp_page_table;
+                temp_page_table = (uint32_t *)(page_directory[replace_pde_offset] & 0xFFFFF000);
+                uint32_t replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
                 
                 //Remove old page
-                *(replace_page_table + replace_pte_offset) &= 0x0;
-                /*Map new page
-                 * Page Table is already present
-                 */
+                *(temp_page_table + replace_pte_offset) &= 0x0;
+                
 #if DEBUG >= 3
                 printf("Removing physical Address %x \n", replace_phy_address);
                 printf("Input Offsets are %d %d\n",page_dir_offset,page_table_offset);
 #endif
+                /*Map new page
+                 * Page Table is already present
+                 */
                 *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
-                
+                //Now set Present Bit in bitmap matrix
                 setPresentBit(page_dir_offset,page_table_offset,1);
-                
-                
-                
-                
-                
             }
-            
         }
     }else{
         printf("Segmentation Fault. Page Table is not present.\n");
     }
 }
-/*
-int clear_address(int virtualAddr){
-    int page_dir_offset = virtualAddr >> 22;
-    int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
-    uint32_t *page_table;
-    page_table = (uint32_t *)page_directory[page_dir_offset] & 0xFFFFF000;
-}*/
 
 int setPresentBit(int pde_offset, int pte_offset, int bool){
     if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
