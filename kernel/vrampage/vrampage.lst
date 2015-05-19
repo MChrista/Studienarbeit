@@ -1,10 +1,10 @@
- GNU assembler version 2.25.0 (x86_64-unknown-linux-gnu)
-	 using BFD version (GNU Binutils) 2.25.0.
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
  options passed	: --32 -I../inc -almgns=vrampage.lst -c 
  input file    	: vrampage.s
  output file   	: vrampage.o
- target        	: x86_64-unknown-linux-gnu
- time stamp    	: 2015-04-20T16:09:58.000+0200
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-19T11:10:22.000-0700
 
    1              	//-----------------------------------------------------------------
    2              	//	vrampage.s
@@ -30,237 +30,238 @@
   22              	#------------------------------------------------------------------
   23 0000 CDAB     		.word	0xABCD			# our loader expects this
   24              	#------------------------------------------------------------------
-  25              	main:	.code16				# begins in x86 real-mode
-  26              		
-  27 0002 2E892627 		mov	%sp, %cs:ipltos+0	# preserve loader's SP
-  27      00
-  28 0007 2E8C1629 		mov	%ss, %cs:ipltos+2	# preserve loader's SS
+  25              		.globl	main
+  26              	main:	.code16				# begins in x86 real-mode
+  27              		
+  28 0002 2E892627 		mov	%sp, %cs:ipltos+0	# preserve loader's SP
   28      00
-  29              	
-  30 000c 8CC8     		mov	%cs, %ax		# address program arena
-  31 000e 8ED0     		mov	%ax, %ss		#   using SS register
-  32 0010 8D265002 		lea	tos, %sp		# establish a new stack
-  33              	
-  34 0014 E83E00   		call	create_paging_tables
-  35 0017 E88800   		call	enter_protected_mode
-  36 001a E8A200   		call	execute_program_demo 
-  37 001d E8E100   		call	leave_protected_mode
-  38              	
-  39 0020 2E0FB226 		lss	%cs:ipltos, %sp		# recover the former stack
-  39      2700
-  40 0026 CB       		lret				# return control to loader
-  41              	#------------------------------------------------------------------
-  42 0027 00000000 	ipltos:	.word	0, 0
-  43              	#------------------------------------------------------------------
-  44 002b 00000000 	theGDT:	.quad	0x0000000000000000	# required null-descriptor
-  44      00000000 
-  45              	
-  46              		.equ	sel_cs, (.-theGDT)	# code-segment's selector
-  47 0033 FFFF0000 		.quad	0x00009A010000FFFF	# code-segment descriptor
-  47      019A0000 
-  48              	
-  49              		.equ	sel_ds, (.-theGDT)	# data-segment's selector
-  50 003b FFFF0000 		.quad	0x000092010000FFFF	# data-segment descriptor
-  50      01920000 
-  51              	
-  52              		.equ	sel_es, (.-theGDT)	# vram-segment's selector
-  53 0043 FFFF0000 		.quad	0x000092000000FFFF	# vram-segment descriptor
-  53      00920000 
-  54              	
-  55              		.equ	limGDT, (.-theGDT)-1	# our GDT's segment-limit 
-  56              	#------------------------------------------------------------------
+  29 0007 2E8C1629 		mov	%ss, %cs:ipltos+2	# preserve loader's SS
+  29      00
+  30              	
+  31 000c 8CC8     		mov	%cs, %ax		# address program arena
+  32 000e 8ED0     		mov	%ax, %ss		#   using SS register
+  33 0010 8D265002 		lea	tos, %sp		# establish a new stack
+  34              	
+  35 0014 E83E00   		call	create_paging_tables
+  36 0017 E88800   		call	enter_protected_mode
+  37 001a E8A200   		call	execute_program_demo 
+  38 001d E8E100   		call	leave_protected_mode
+  39              	
+  40 0020 2E0FB226 		lss	%cs:ipltos, %sp		# recover the former stack
+  40      2700
+  41 0026 CB       		lret				# return control to loader
+  42              	#------------------------------------------------------------------
+  43 0027 00000000 	ipltos:	.word	0, 0
+  44              	#------------------------------------------------------------------
+  45 002b 00000000 	theGDT:	.quad	0x0000000000000000	# required null-descriptor
+  45      00000000 
+  46              	
+  47              		.equ	sel_cs, (.-theGDT)	# code-segment's selector
+  48 0033 FFFF0000 		.quad	0x00009A010000FFFF	# code-segment descriptor
+  48      019A0000 
+  49              	
+  50              		.equ	sel_ds, (.-theGDT)	# data-segment's selector
+  51 003b FFFF0000 		.quad	0x000092010000FFFF	# data-segment descriptor
+  51      01920000 
+  52              	
+  53              		.equ	sel_es, (.-theGDT)	# vram-segment's selector
+  54 0043 FFFF0000 		.quad	0x000092000000FFFF	# vram-segment descriptor
+  54      00920000 
+  55              	
+  56              		.equ	limGDT, (.-theGDT)-1	# our GDT's segment-limit 
   57              	#------------------------------------------------------------------
-  58 004b 1F002B00 	regGDT:	.word	limGDT, theGDT, 0x0001	# image for GDTR register
-  58      0100
-  59              	#------------------------------------------------------------------
-  60 0051 00200100 	regCR3:	.long	16*realCS + pgdir	# image for CR3 register 
-  61              	#------------------------------------------------------------------
-  62              	create_paging_tables:
-  63              	
-  64              		# setup segment-register DS to address program's arena
-  65 0055 8CC8     		mov	%cs, %ax		# address paging tables
-  66 0057 8ED8     		mov	%ax, %ds		#   using DS register
-  67              	
-  68              		#-----------------------------------
-  69              		# initialize two page-table entries 
-  70              		#-----------------------------------
-  71              	
-  72              		# setup mapping for virtual-address 0x00000000 
-  73 0059 66BF0000 		mov	$0x00, %edi		# for virtual page 0x00 
-  73      0000
-  74 005f 66B80080 		mov	$0xB8000, %eax		# physical page-address
-  74      0B00
-  75 0065 6683C803 		or	$0x003, %eax		# present and writable
-  76 0069 67668904 		mov	%eax, pgtbl(,%edi,4)	# write the table-entry
-  76      BD001000 
-  76      00
-  77              	
-  78              		# setup mapping for virtual-address 0x00010000 
-  79 0072 66BF1000 		mov	$0x10, %edi		# for virtual page 0x10
-  79      0000
-  80 0078 66B80000 		mov	$0x10000, %eax		# physical page-address
-  80      0100
-  81 007e 6683C803 		or	$0x003, %eax		# present and writable
-  82 0082 67668904 		mov	%eax, pgtbl(,%edi,4)	# write the table-entry
-  82      BD001000 
-  82      00
-  83              	
-  84              		#------------------------------------
-  85              		# initialize one page-drectory entry  
-  86              		#------------------------------------
-  87              	
-  88              		# setup the page-directory to use our page-table
-  89 008b 66BB0000 		mov	$0x10000, %ebx		# arena physical-address
-  89      0100
-  90 0091 67668D83 		lea	pgtbl(%ebx), %eax	# pgtbl physical-address
-  90      00100000 
-  91 0099 6683C803 		or	$0x003, %eax		# present and writable 
-  92 009d 66A30020 		mov	%eax, pgdir		# page-directory entry 0
-  93              	
-  94 00a1 C3       		ret
-  95              	#------------------------------------------------------------------
-  96              	enter_protected_mode:
-  97              	
-  98 00a2 FA       		cli				# interrupts disabled
-  99              	
- 100 00a3 0F20C0   		mov	%cr0, %eax		# current machine status
- 101 00a6 660FBAE8 		bts	$0, %eax		# turn on PE-bit's image
- 101      00
- 102 00ab 0F22C0   		mov	%eax, %cr0		# enable protected mode
- 103              	
- 104 00ae 2E0F0116 		lgdt	%cs:regGDT		# establish our GDT
- 104      4B00
- 105              	
- 106 00b4 EAB90008 		ljmp	$sel_cs, $pm		# reload CS register
- 106      00
- 107              	pm:	
- 108 00b9 B81000   		mov	$sel_ds, %ax
- 109 00bc 8ED0     		mov	%ax, %ss		# reload SS register
- 110              	
- 111 00be C3       		ret
- 112              	#------------------------------------------------------------------
+  58              	#------------------------------------------------------------------
+  59 004b 1F002B00 	regGDT:	.word	limGDT, theGDT, 0x0001	# image for GDTR register
+  59      0100
+  60              	#------------------------------------------------------------------
+  61 0051 00200100 	regCR3:	.long	16*realCS + pgdir	# image for CR3 register 
+  62              	#------------------------------------------------------------------
+  63              	create_paging_tables:
+  64              	
+  65              		# setup segment-register DS to address program's arena
+  66 0055 8CC8     		mov	%cs, %ax		# address paging tables
+  67 0057 8ED8     		mov	%ax, %ds		#   using DS register
+  68              	
+  69              		#-----------------------------------
+  70              		# initialize two page-table entries 
+  71              		#-----------------------------------
+  72              	
+  73              		# setup mapping for virtual-address 0x00000000 
+  74 0059 66BF0000 		mov	$0x00, %edi		# for virtual page 0x00 
+  74      0000
+  75 005f 66B80080 		mov	$0xB8000, %eax		# physical page-address
+  75      0B00
+  76 0065 6683C803 		or	$0x003, %eax		# present and writable
+  77 0069 67668904 		mov	%eax, pgtbl(,%edi,4)	# write the table-entry
+  77      BD001000 
+  77      00
+  78              	
+  79              		# setup mapping for virtual-address 0x00010000 
+  80 0072 66BF1000 		mov	$0x10, %edi		# for virtual page 0x10
+  80      0000
+  81 0078 66B80000 		mov	$0x10000, %eax		# physical page-address
+  81      0100
+  82 007e 6683C803 		or	$0x003, %eax		# present and writable
+  83 0082 67668904 		mov	%eax, pgtbl(,%edi,4)	# write the table-entry
+  83      BD001000 
+  83      00
+  84              	
+  85              		#------------------------------------
+  86              		# initialize one page-drectory entry  
+  87              		#------------------------------------
+  88              	
+  89              		# setup the page-directory to use our page-table
+  90 008b 66BB0000 		mov	$0x10000, %ebx		# arena physical-address
+  90      0100
+  91 0091 67668D83 		lea	pgtbl(%ebx), %eax	# pgtbl physical-address
+  91      00100000 
+  92 0099 6683C803 		or	$0x003, %eax		# present and writable 
+  93 009d 66A30020 		mov	%eax, pgdir		# page-directory entry 0
+  94              	
+  95 00a1 C3       		ret
+  96              	#------------------------------------------------------------------
+  97              	enter_protected_mode:
+  98              	
+  99 00a2 FA       		cli				# interrupts disabled
+ 100              	
+ 101 00a3 0F20C0   		mov	%cr0, %eax		# current machine status
+ 102 00a6 660FBAE8 		bts	$0, %eax		# turn on PE-bit's image
+ 102      00
+ 103 00ab 0F22C0   		mov	%eax, %cr0		# enable protected mode
+ 104              	
+ 105 00ae 2E0F0116 		lgdt	%cs:regGDT		# establish our GDT
+ 105      4B00
+ 106              	
+ 107 00b4 EAB90008 		ljmp	$sel_cs, $pm		# reload CS register
+ 107      00
+ 108              	pm:	
+ 109 00b9 B81000   		mov	$sel_ds, %ax
+ 110 00bc 8ED0     		mov	%ax, %ss		# reload SS register
+ 111              	
+ 112 00be C3       		ret
  113              	#------------------------------------------------------------------
- 114              	execute_program_demo:
- 115              	
- 116              		# setup page-directory address in control register CR3
- 117 00bf 66A12201 		mov	ptdb, %eax		# page-directory address
- 118 00c3 0F22D8   		mov	%eax, %cr3		# goes into CR3 register
- 119              	
- 120              		# turn on paging (by setting bit #31 in register CR0)
- 121 00c6 0F20C0   		mov	%cr0, %eax		# current machine status
- 122 00c9 660FBAE8 		bts	$31, %eax		# turn on PG-bit's image
- 122      1F
- 123 00ce 0F22C0   		mov	%eax, %cr0		# enable page-mappings  
- 124 00d1 EB00     		jmp	.+2			# flush prefetch queue 
- 125              	
- 126              		# now write a message to the "virtual" video memory
- 127 00d3 B81800   		mov	$sel_es, %ax		# address segment zero
- 128 00d6 8EC0     		mov	%ax, %es		#   with ES register
- 129 00d8 8B3E4C01 		mov	dst, %di		# point ES:DI to screen
- 130 00dc FC       		cld				# do forward processing
- 131 00dd 8D362601 		lea	msg, %si		# point DS:SI to string
- 132 00e1 8B0E4901 		mov	len, %cx		# string's length in CX
- 133 00e5 8A264B01 		mov	att, %ah		# text's colors into AH
- 134 00e9 AC       	nxpel:	lodsb				# fetch next character
- 135 00ea AB       		stosw				# store char w/ colors
- 136 00eb E2FC     		loop	nxpel			# draw complete string
- 137              	
- 138              		# disable paging (by clearing bit #31 in register CR0)
- 139 00ed 0F20C0   		mov	%cr0, %eax		# current machine status
- 140 00f0 660FBAF0 		btr	$31, %eax		# reset PG-bit's image
- 140      1F
- 141 00f5 0F22C0   		mov	%eax, %cr0		# disable page-mapping
- 142 00f8 EB00     		jmp	.+2			# flush prefetch queue
- 143              	
- 144              		# invalidate the CPU's Translation Lookaside Buffer
- 145 00fa 6631C0   		xor	%eax, %eax		# setup "dummy" value
- 146 00fd 0F22D8   		mov	%eax, %cr3		# and write it to CR3
- 147              	
- 148 0100 C3       		ret
- 149              	#------------------------------------------------------------------
- 150              	leave_protected_mode:
- 151              	
- 152 0101 B81000   		mov	$sel_ds, %ax		# insure 'writable' 64KB
- 153 0104 8ED8     		mov	%ax, %ds		#   in DS hidden cache
- 154 0106 8EC0     		mov	%ax, %es		#   in ES hidden cache
- 155 0108 8EE0     		mov	%ax, %fs		#   in FS hidden cache
- 156 010a 8EE8     		mov	%ax, %gs		#   in GS hidden cache
- 157              	
- 158 010c 0F20C0   		mov	%cr0, %eax		# current machine status
- 159 010f 660FBAF0 		btr	$0, %eax		# reset PE-bit's image
- 159      00
- 160 0114 0F22C0   		mov	%eax, %cr0		# disable protected-mode
- 161              	
- 162 0117 EA1C0100 		ljmp	$realCS, $rm		# reload CS register
- 162      10
- 163 011c 8CC8     	rm:	mov	%cs, %ax
- 164 011e 8ED0     		mov	%ax, %ss		# reload SS register
- 165              	
- 166 0120 FB       		sti				# reenable interrupts
- 167 0121 C3       		ret
- 168              	#------------------------------------------------------------------
+ 114              	#------------------------------------------------------------------
+ 115              	execute_program_demo:
+ 116              	
+ 117              		# setup page-directory address in control register CR3
+ 118 00bf 66A12201 		mov	ptdb, %eax		# page-directory address
+ 119 00c3 0F22D8   		mov	%eax, %cr3		# goes into CR3 register
+ 120              	
+ 121              		# turn on paging (by setting bit #31 in register CR0)
+ 122 00c6 0F20C0   		mov	%cr0, %eax		# current machine status
+ 123 00c9 660FBAE8 		bts	$31, %eax		# turn on PG-bit's image
+ 123      1F
+ 124 00ce 0F22C0   		mov	%eax, %cr0		# enable page-mappings  
+ 125 00d1 EB00     		jmp	.+2			# flush prefetch queue 
+ 126              	
+ 127              		# now write a message to the "virtual" video memory
+ 128 00d3 B81800   		mov	$sel_es, %ax		# address segment zero
+ 129 00d6 8EC0     		mov	%ax, %es		#   with ES register
+ 130 00d8 8B3E4C01 		mov	dst, %di		# point ES:DI to screen
+ 131 00dc FC       		cld				# do forward processing
+ 132 00dd 8D362601 		lea	msg, %si		# point DS:SI to string
+ 133 00e1 8B0E4901 		mov	len, %cx		# string's length in CX
+ 134 00e5 8A264B01 		mov	att, %ah		# text's colors into AH
+ 135 00e9 AC       	nxpel:	lodsb				# fetch next character
+ 136 00ea AB       		stosw				# store char w/ colors
+ 137 00eb E2FC     		loop	nxpel			# draw complete string
+ 138              	
+ 139              		# disable paging (by clearing bit #31 in register CR0)
+ 140 00ed 0F20C0   		mov	%cr0, %eax		# current machine status
+ 141 00f0 660FBAF0 		btr	$31, %eax		# reset PG-bit's image
+ 141      1F
+ 142 00f5 0F22C0   		mov	%eax, %cr0		# disable page-mapping
+ 143 00f8 EB00     		jmp	.+2			# flush prefetch queue
+ 144              	
+ 145              		# invalidate the CPU's Translation Lookaside Buffer
+ 146 00fa 6631C0   		xor	%eax, %eax		# setup "dummy" value
+ 147 00fd 0F22D8   		mov	%eax, %cr3		# and write it to CR3
+ 148              	
+ 149 0100 C3       		ret
+ 150              	#------------------------------------------------------------------
+ 151              	leave_protected_mode:
+ 152              	
+ 153 0101 B81000   		mov	$sel_ds, %ax		# insure 'writable' 64KB
+ 154 0104 8ED8     		mov	%ax, %ds		#   in DS hidden cache
+ 155 0106 8EC0     		mov	%ax, %es		#   in ES hidden cache
+ 156 0108 8EE0     		mov	%ax, %fs		#   in FS hidden cache
+ 157 010a 8EE8     		mov	%ax, %gs		#   in GS hidden cache
+ 158              	
+ 159 010c 0F20C0   		mov	%cr0, %eax		# current machine status
+ 160 010f 660FBAF0 		btr	$0, %eax		# reset PE-bit's image
+ 160      00
+ 161 0114 0F22C0   		mov	%eax, %cr0		# disable protected-mode
+ 162              	
+ 163 0117 EA1C0100 		ljmp	$realCS, $rm		# reload CS register
+ 163      10
+ 164 011c 8CC8     	rm:	mov	%cs, %ax
+ 165 011e 8ED0     		mov	%ax, %ss		# reload SS register
+ 166              	
+ 167 0120 FB       		sti				# reenable interrupts
+ 168 0121 C3       		ret
  169              	#------------------------------------------------------------------
- 170 0122 00200100 	ptdb:	.long	16*realCS + pgdir 	# pgdir: physical address 
- 171              	#------------------------------------------------------------------
- 172 0126 2048656C 	msg:	.ascii	" Hello from 'virtual' video memory " 
- 172      6C6F2066 
- 172      726F6D20 
- 172      27766972 
- 172      7475616C 
- 173 0149 2300     	len:	.short	. - msg			# number of message bytes
- 174 014b 1F       	att:	.byte	0x1F			# message text-attributes
- 175 014c AC07     	dst:	.short	(12 * 80 + 22) * 2	# message screen-position
- 176              	#------------------------------------------------------------------
- 177 014e 6690     		.align	16			# insures stack alignment
- 178 0150 00000000 		.space	256			# space for stack's usage
- 178      00000000 
- 178      00000000 
- 178      00000000 
- 178      00000000 
- 179              	tos:					# labels our top-of-stack
- 180              	#------------------------------------------------------------------
- 181 0250 90909090 		.align	0x1000			# tables are page-aligned
- 181      90909090 
- 181      90909090 
- 181      90909090 
- 181      90909090 
- 182 1000 00000000 	pgtbl:	.zero	0x1000			# reserved for page-table
- 182      00000000 
- 182      00000000 
- 182      00000000 
- 182      00000000 
- 183 2000 00000000 	pgdir:	.zero	0x1000			# also for page-directory
+ 170              	#------------------------------------------------------------------
+ 171 0122 00200100 	ptdb:	.long	16*realCS + pgdir 	# pgdir: physical address 
+ 172              	#------------------------------------------------------------------
+ 173 0126 2048656C 	msg:	.ascii	" Hello from 'virtual' video memory " 
+ 173      6C6F2066 
+ 173      726F6D20 
+ 173      27766972 
+ 173      7475616C 
+ 174 0149 2300     	len:	.short	. - msg			# number of message bytes
+ 175 014b 1F       	att:	.byte	0x1F			# message text-attributes
+ 176 014c AC07     	dst:	.short	(12 * 80 + 22) * 2	# message screen-position
+ 177              	#------------------------------------------------------------------
+ 178 014e 6690     		.align	16			# insures stack alignment
+ 179 0150 00000000 		.space	256			# space for stack's usage
+ 179      00000000 
+ 179      00000000 
+ 179      00000000 
+ 179      00000000 
+ 180              	tos:					# labels our top-of-stack
+ 181              	#------------------------------------------------------------------
+ 182 0250 90909090 		.align	0x1000			# tables are page-aligned
+ 182      90909090 
+ 182      90909090 
+ 182      90909090 
+ 182      90909090 
+ 183 1000 00000000 	pgtbl:	.zero	0x1000			# reserved for page-table
  183      00000000 
  183      00000000 
  183      00000000 
  183      00000000 
- 184              	#------------------------------------------------------------------
- 185              		.end				# nothing more to assemble
+ 184 2000 00000000 	pgdir:	.zero	0x1000			# also for page-directory
+ 184      00000000 
+ 184      00000000 
+ 184      00000000 
+ 184      00000000 
+ 185              	#------------------------------------------------------------------
+ 186              		.end				# nothing more to assemble
 DEFINED SYMBOLS
           vrampage.s:19     *ABS*:0000000000001000 realCS
-          vrampage.s:25     .text:0000000000000002 main
-          vrampage.s:42     .text:0000000000000027 ipltos
-          vrampage.s:179    .text:0000000000000250 tos
-          vrampage.s:62     .text:0000000000000055 create_paging_tables
-          vrampage.s:96     .text:00000000000000a2 enter_protected_mode
-          vrampage.s:114    .text:00000000000000bf execute_program_demo
-          vrampage.s:150    .text:0000000000000101 leave_protected_mode
-          vrampage.s:44     .text:000000000000002b theGDT
-          vrampage.s:46     *ABS*:0000000000000008 sel_cs
-          vrampage.s:49     *ABS*:0000000000000010 sel_ds
-          vrampage.s:52     *ABS*:0000000000000018 sel_es
-          vrampage.s:55     *ABS*:000000000000001f limGDT
-          vrampage.s:58     .text:000000000000004b regGDT
-          vrampage.s:60     .text:0000000000000051 regCR3
-          vrampage.s:183    .text:0000000000002000 pgdir
-          vrampage.s:182    .text:0000000000001000 pgtbl
-          vrampage.s:107    .text:00000000000000b9 pm
-          vrampage.s:170    .text:0000000000000122 ptdb
-          vrampage.s:175    .text:000000000000014c dst
-          vrampage.s:172    .text:0000000000000126 msg
-          vrampage.s:173    .text:0000000000000149 len
-          vrampage.s:174    .text:000000000000014b att
-          vrampage.s:134    .text:00000000000000e9 nxpel
-          vrampage.s:163    .text:000000000000011c rm
+          vrampage.s:26     .text:0000000000000002 main
+          vrampage.s:43     .text:0000000000000027 ipltos
+          vrampage.s:180    .text:0000000000000250 tos
+          vrampage.s:63     .text:0000000000000055 create_paging_tables
+          vrampage.s:97     .text:00000000000000a2 enter_protected_mode
+          vrampage.s:115    .text:00000000000000bf execute_program_demo
+          vrampage.s:151    .text:0000000000000101 leave_protected_mode
+          vrampage.s:45     .text:000000000000002b theGDT
+          vrampage.s:47     *ABS*:0000000000000008 sel_cs
+          vrampage.s:50     *ABS*:0000000000000010 sel_ds
+          vrampage.s:53     *ABS*:0000000000000018 sel_es
+          vrampage.s:56     *ABS*:000000000000001f limGDT
+          vrampage.s:59     .text:000000000000004b regGDT
+          vrampage.s:61     .text:0000000000000051 regCR3
+          vrampage.s:184    .text:0000000000002000 pgdir
+          vrampage.s:183    .text:0000000000001000 pgtbl
+          vrampage.s:108    .text:00000000000000b9 pm
+          vrampage.s:171    .text:0000000000000122 ptdb
+          vrampage.s:176    .text:000000000000014c dst
+          vrampage.s:173    .text:0000000000000126 msg
+          vrampage.s:174    .text:0000000000000149 len
+          vrampage.s:175    .text:000000000000014b att
+          vrampage.s:135    .text:00000000000000e9 nxpel
+          vrampage.s:164    .text:000000000000011c rm
 
 NO UNDEFINED SYMBOLS

@@ -22,6 +22,7 @@
 #------------------------------------------------------------------
 	.word	0xABCD			# our loader expects this
 #------------------------------------------------------------------
+	.globl	main
 main:	.code16				# begins in x86 real-mode
 	
 	mov	%sp, %cs:ipltos+0	# preserve loader's SP

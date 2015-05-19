@@ -7,8 +7,6 @@
 
 include ../common_defs.mk
 
-BOOTDIR     = ../boot
-BOOTLOADER  = $(BOOTDIR)/bootload.bin
 LDSCRIPT    = ../ldscript_bin
 PROG        = vrampage
 
@@ -19,15 +17,17 @@ TARGETS     = $(PROG).flp
 
 all: $(TARGETS)
 
-$(PROG).flp : $(PROG).bin $(BOOTLOADER)
-	$(call update-image,$@,$<,$(FLP_USF_POS))
+$(PROG).flp : $(PROG).bin
+	if [ ! -f $@ ]; then \
+	    mkdosfs -C $@ 1440 ; \
+	fi;
+	dd status=noxfer conv=notrunc if=$< of=$@
 
 # Note: program is directly linked into binary output format
 #       without intermediate generation of an ELF output file
 $(PROG).bin : $(PROG).o $(LDSCRIPT)
 	@echo LD -o $@
 	@$(LD) $(LDFLAGS) $< -T $(LDSCRIPT) -o $@
-
 
 .PHONY: clean
 clean:
