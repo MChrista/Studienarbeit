@@ -61,7 +61,7 @@ struct page_fault_result * pageFault( int virtualAddr){
             printf("Makro sagt nicht present\n");
         }
 */
-        if((*(page_table + page_table_offset) & PRESENT_BIT) == PRESENT_BIT){ //if present Bit is set
+        if((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT){ //if present Bit is set
             printf("Debug step\n");
             if(page_counter < maxNumberOfPages){
                 printf("Maximum number of pages has not been reached\n");
@@ -76,7 +76,9 @@ struct page_fault_result * pageFault( int virtualAddr){
             }else{
                 printf("The Maximum Number of Pages have been reached already. This Page can't be reserved\n"); 
                 //Get physical address of page you want to replace
+                printf("Start PTE offset: %d\n", replace_pte_offset);
                 do{
+                    //printf(".\n");
                     replace_pte_offset++;
                     if(replace_pte_offset > 1023){
                         if(replace_pde_offset==1023){
