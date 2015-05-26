@@ -28,7 +28,8 @@ void testPaging( int virtualAddr, uint32_t * page_directory ){
         	uint32_t *page_table;
         	page_table = (uint32_t *)(page_directory[page_dir_offset] & 0xFFFFF000);
        	if((*(page_table + page_table_offset) & PRESENT_BIT)){ //if page present Bit is set
-			printf("\t");        
+			printf("\t");
+            pf_result = pageFault( virtualAddr );
 		}else{
         	printf("\tFPTE");
             pf_result = pageFault( virtualAddr );
@@ -106,7 +107,7 @@ int main( int argc, char** argv )
 			exit(1);
 		} 
 		int testAddr;
-		printf("\n        Address\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
+		printf("\nType\tAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\tFlags\n");
 		while (fscanf(f, "%08X", &testAddr) != EOF) {
 			testPaging(testAddr, pageDir);
 		}

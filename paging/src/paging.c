@@ -7,17 +7,17 @@
 /*
  * Declaration of Page Directory and Page tables
  */
-//uint32_t page_directory[1024] __attribute__((aligned(0x1000)));
+uint32_t page_directory[1024] __attribute__((aligned(0x1000)));
 
-uint32_t * page_directory = (uint32_t *) 0x100000;
-uint32_t * kernel_page_table = (uint32_t *) 0x101000;
-uint32_t * programm_page_table = (uint32_t *) 0x102000;
-uint32_t * stack_page_table = (uint32_t *) 0x103000;
+//uint32_t * page_directory = (uint32_t *) 0x100000;
+//uint32_t * kernel_page_table = (uint32_t *) 0x101000;
+//uint32_t * programm_page_table = (uint32_t *) 0x102000;
+//uint32_t * stack_page_table = (uint32_t *) 0x103000;
 
 //Create Page Tables
-//uint32_t kernel_page_table[1024] __attribute__((align(0x1000)));
-//uint32_t programm_page_table[1024] __attribute__((align(0x1000)));
-//uint32_t stack_page_table[1024] __attribute__((align(0x1000)));
+uint32_t kernel_page_table[1024] __attribute__((align(0x1000)));
+uint32_t programm_page_table[1024] __attribute__((align(0x1000)));
+uint32_t stack_page_table[1024] __attribute__((align(0x1000)));
 
 //General Parameters
 int startaddress = 0x200000; //Startaddress for Physical Memory
@@ -175,7 +175,7 @@ int isPresentBit(int pde_offset, int pte_offset){
     }else{
         int index = pte_offset/32;
         
-#if DEBUG >= 1
+#if DEBUG >= 2
         printf("Index in PDE is %d\n",pde_offset);
         printf("Index in PTE is %d\n",index);
 #endif
