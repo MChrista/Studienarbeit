@@ -1,0 +1,50 @@
+     1                                  ;-------------------------------------------------------------------
+     2                                  ; FUNCTION:   uint16_to_dec
+     3                                  ;
+     4                                  ; PURPOSE:    Convert a 16-bit unsigned integer into its decimal
+     5                                  ;             ASCII representation
+     6                                  ;
+     7                                  ; PARAMETERS: (via register)
+     8                                  ;             EAX - value to output as 32-bit unsigned integer
+     9                                  ;             EDI - pointer to output string
+    10                                  ;
+    11                                  ; RETURN:     Pointer to character following output string
+    12                                  ;
+    13                                  ;-------------------------------------------------------------------
+    14                                  SECTION .text
+    15                                  GLOBAL uint16_to_dec:function
+    16                                  
+    17                                  uint16_to_dec:
+    18 00000000 53                              push    ebx
+    19 00000001 51                              push    ecx
+    20 00000002 52                              push    edx
+    21                                  
+    22 00000003 B905000000                      mov     ecx,5             ; iterate over 5 decimal digits
+    23 00000008 85C0                            test    eax,eax           ; check whether number is zero
+    24 0000000A 7507                            jnz     .loop_start       ; if not, convert to string
+    25 0000000C C6440FFF30                      mov     byte [edi+ecx-1],'0' ; otherwise, just write a single 0 into buffer
+    26 00000011 EB1D                            jmp     .func_end
+    27                                  .loop_start:
+    28 00000013 BB0A000000                      mov     ebx,10            ; use decimal divisor
+    29                                  .loop:
+    30 00000018 6685C0                          test    ax,ax             ; check whether dividend is already zero
+    31 0000001B 740B                            je      .skip_div         ; and skip division
+    32 0000001D 6631D2                          xor     dx,dx             ; clear upper 16-bit of dividend
+    33 00000020 66F7F3                          div     bx                ; otherwise, perform division by bx = 10
+    34 00000023 80C230                          add     dl,'0'            ; and convert division remainder to BCD digit
+    35 00000026 EB02                            jmp     .write_digit
+    36                                  .skip_div:
+    37 00000028 B220                            mov     dl,' '
+    38                                  .write_digit:
+    39 0000002A 88540FFF                        mov     [edi+ecx-1],dl    ; write digit into buffer from right to left
+    40 0000002E E2E8                            loop    .loop
+    41                                  
+    42                                  .func_end:
+    43 00000030 8D4705                          lea     eax,[edi+5]
+    44                                          ; restore registers from stack
+    45 00000033 5A                              pop     edx
+    46 00000034 59                              pop     ecx
+    47 00000035 5B                              pop     ebx
+    48 00000036 C3                              ret
+    49                                  
+    50                                  

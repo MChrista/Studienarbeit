@@ -1,0 +1,270 @@
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
+ options passed	: --32 -I../inc -g -almgns=obj/stacktrace.lst -c 
+ input file    	: src/stacktrace.s
+ output file   	: obj/stacktrace.o
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-26T12:17:32.000-0700
+
+   1              	
+   2              	
+   3              	
+   4              	#------------------------------------------------------------------
+   5              	#   32(%ebp)    bitmask to highlight registers
+   6              	#   28(%ebp)    add column number
+   7              	#   24(%ebp)    get normal/highlight colors
+   8              	#   20(%ebp)    number of stack entries
+   9              	#   16(%ebp)    address of previous values buffer
+  10              	#               if zero, values are not compared against previous
+  11              	#               value and highlighted in case they are different
+  12              	#   12(%ebp)    address of stack element names
+  13              	#    8(%ebp)    address of stack bottom entry
+  14              	#------------------------------------------------------------------
+  15              	        .section        .data
+  16              	        .global stkname
+  17 0000 2D2D3E20 	stkname:.ascii  "-->  +4  +8 +12 +16 +20 +24 +28 +32 +36 +40 "
+  17      202B3420 
+  17      202B3820 
+  17      2B313220 
+  17      2B313620 
+  18              	        .equ    STK_NUM, ( . - stkname )/4    # number of array entries
+  19              	        .globl  STK_NUM
+  20              	        .global tssname
+  21 002c 45495020 	tssname:.ascii  "EIP EFL EAX ECX EDX EBX ESP EBP ESI EDI "
+  21      45464C20 
+  21      45415820 
+  21      45435820 
+  21      45445820 
+  22 0054 20455320 	        .ascii  " ES  CS  SS  DS  FS  GS "
+  22      20435320 
+  22      20535320 
+  22      20445320 
+  22      20465320 
+  23              	        .global TSS_NUM
+  24              	        .equ    TSS_NUM, ( . - tssname )/4    # number of array entries
+  25              	        #----------------------------------------------------------
+  26 006c 434E5420 	dbgname:.ascii  "CNT INS TSS DR0 DR1 DR2 DR6 DR7 "
+  26      494E5320 
+  26      54535320 
+  26      44523020 
+  26      44523120 
+  27              	        .globl  dbgname
+  28              	        .equ    DBG_NUM, ( . - dbgname )/4    # number of array entries
+  29              	        .globl  DBG_NUM
+  30 008c 20475320 	intname:.ascii  " GS  FS  ES  DS "
+  30      20465320 
+  30      20455320 
+  30      20445320 
+  31              	        .globl  intname
+  32 009c 45444920 	regname:.ascii  "EDI ESI EBP ESP EBX EDX ECX EAX "
+  32      45534920 
+  32      45425020 
+  32      45535020 
+  32      45425820 
+  33              	        .globl  regname
+  34              	        .equ    REG_NUM, ( . - regname )/4    # number of array entries
+  35              	        .globl  REG_NUM
+  36 00bc 494E5420 	        .ascii  "INT "
+  37 00c0 45525220 	        .ascii  "ERR "
+  38 00c4 45495020 	        .ascii  "EIP  CS "
+  38      20435320 
+  39 00cc 45464C20 	eflname:.ascii  "EFL "
+  40 00d0 45535020 	        .ascii  "ESP  SS "
+  40      20535320 
+  41              	        .equ    INT_NUM, ( . - intname )/4    # number of array entries
+  42              	        .globl  INT_NUM
+  43              	stackbuf:
+  44 00d8 206E6E6E 	        .ascii  " nnn xxxxxxxx "              # buffer for hex display
+  44      20787878 
+  44      78787878 
+  44      7820
+  45              	        .equ    BUF_LEN, . - stackbuf         # length of outbup buffer
+  46              	#------------------------------------------------------------------
+  47              	        .section        .text
+  48              	        .type           print_stacktrace, @function
+  49              	        .globl          print_stacktrace
+  50              	        .align          8
+  51              	print_stacktrace:
+  52 0000 C8000000 	        enter   $0, $0
+  53 0004 60       	        pushal
+  54 0005 06       	        pushl   %es
+  55              	
+  56              	        #----------------------------------------------------------
+  57              	        # ok, here we display our stack-frame (with labels)
+  58              	        #----------------------------------------------------------
+  59 0006 66B80000 	        mov     $sel_es, %ax            # address video memory
+  60 000a 8EC0     	        mov     %ax, %es                #   with ES register
+  61              	
+  62 000c FC       	        cld                             # do forward processing
+  63 000d 31C9     	        xor     %ecx, %ecx              # stack entry counter starts from 0
+  64              	nxreg:
+  65              	        #----------------------------------------------------------
+  66              	        # store next field-label in the info-buffer
+  67              	        #----------------------------------------------------------
+  68 000f 8B550C   	        mov     12(%ebp), %edx          # address of stack element names
+  69 0012 8B1C8A   	        mov     (%edx, %ecx, 4), %ebx   # fetch register label
+  70 0015 891DD900 	        mov     %ebx, stackbuf+1        # store register label
+  70      0000
+  71              	
+  72              	        #----------------------------------------------------------
+  73              	        # store next field-value in the info-buffer
+  74              	        #----------------------------------------------------------
+  75 001b 8D3DDD00 	        lea     stackbuf+5, %edi        # point to output field
+  75      0000
+  76 0021 8B5508   	        mov     8(%ebp), %edx           # address of stack bottom entry
+  77 0024 368B048A 	        mov     %ss:(%edx, %ecx, 4), %eax
+  78 0028 8B5514   	        mov     20(%ebp), %edx          # number of stack entries
+  79 002b 29CA     	        sub     %ecx, %edx              # calculate remaining entries
+  80 002d 3B1DCC00 	        cmpl    eflname, %ebx           # is it the EFLAGS entry?
+  80      0000
+  81 0033 7407     	        je      write_flags             # yes, then write flags
+  82 0035 E8FCFFFF 	        call    int32_to_hex            # otherwise, store value as hex
+  82      FF
+  83 003a EB0D     	        jmp     skip_flags
+  84              	
+  85              	write_flags:
+  86 003c 66C70720 	        movw    $0x2020, (%edi)         # write two space chars
+  86      20
+  87 0041 83C702   	        add     $2, %edi                # and skip these two chars
+  88 0044 E8FCFFFF 	        call    get_flags_str
+  88      FF
+  89              	
+  90              	skip_flags:
+  91              	        #----------------------------------------------------------
+  92              	        # compute screen-location for this element
+  93              	        #----------------------------------------------------------
+  94 0049 B8170000 	        mov     $23, %eax               # bottom item line-number
+  94      00
+  95 004e 29C8     	        sub     %ecx, %eax              # minus the item's number
+  96              	        # edi <- 80 cols * 2 Bytes * rows
+  97              	        # edi <- 160 * eax = 5 * 32 * eax
+  98 0050 8D3C80   	        lea     (%eax, %eax, 4), %edi   # edi <- 5 * eax
+  99 0053 C1E704   	        shl     $4, %edi                # edi <- 16 * edi
+ 100 0056 037D1C   	        add     28(%ebp), %edi          # add column number
+ 101 0059 D1E7     	        shl     $1, %edi                # edi <- 2 * edi
+ 102 005b E8FCFFFF 	        call    screen_get_page
+ 102      FF
+ 103 0060 C1E00C   	        shl     $12, %eax
+ 104 0063 01C7     	        add     %eax, %edi              # vram-offset into EDI
+ 105              	
+ 106 0065 8B4518   	        mov     24(%ebp), %eax          # get normal/highlight colors
+ 107 0068 8B5D08   	        mov     8(%ebp), %ebx           # address of stack bottom entry
+ 108              	        # load register contents from stack (use stack segment for access)
+ 109 006b 368B148B 	        mov     %ss:(%ebx, %ecx, 4), %edx
+ 110              	
+ 111              	        #----------------------------------------------------------
+ 112              	        # check whether the current register needs to be highlighted
+ 113              	        #----------------------------------------------------------
+ 114 006f 8B5D10   	        mov     16(%ebp), %ebx          # address of previous values buffer
+ 115 0072 0FA34D20 	        btl     %ecx, 32(%ebp)
+ 116 0076 7309     	        jnc     checkprev
+ 117 0078 C1E808   	        shr     $8, %eax                # get alternative highlight color
+ 118 007b 85DB     	        test    %ebx, %ebx              # check if buffer address is zero
+ 119 007d 7410     	        jz      transfer                #   if zero, output stacktrace
+ 120 007f EB0B     	        jmp     regstore                #   else, store value
+ 121              	
+ 122              	checkprev:
+ 123              	        #----------------------------------------------------------
+ 124              	        # check whether address of array with previously stored values is
+ 125              	        # zero
+ 126              	        #----------------------------------------------------------
+ 127 0081 85DB     	        test    %ebx, %ebx              # check if address is zero
+ 128 0083 740A     	        jz      transfer                #   if zero, skip highlighting
+ 129              	        #----------------------------------------------------------
+ 130              	        # compare register value on stack (EDX) with previously stored
+ 131              	        # value stored in array pointed to by EBX
+ 132              	        #----------------------------------------------------------
+ 133 0085 3B148B   	        cmp     (%ebx,%ecx,4), %edx     # compare previous with current value
+ 134 0088 7405     	        je      transfer                #   if equal, skip highlighting
+ 135 008a 86C4     	        xchg    %al, %ah                # exchange normal with highlight color
+ 136              	regstore:
+ 137 008c 89148B   	        mov     %edx, (%ebx,%ecx,4)     # store register value in array
+ 138              	
+ 139              	transfer:
+ 140              	        #----------------------------------------------------------
+ 141              	        # output stacktrace onto the screen
+ 142              	        #----------------------------------------------------------
+ 143 008f 51       	        push    %ecx                    # save stack entry counter
+ 144 0090 B90E0000 	        mov     $BUF_LEN, %ecx          # setup message length
+ 144      00
+ 145 0095 8D35D800 	        lea     stackbuf, %esi          # point to info buffer
+ 145      0000
+ 146 009b AC       	nxchx:  lodsb                           # fetch message character
+ 147 009c 66AB     	        stosw                           # store char and color
+ 148 009e E2FB     	        loop    nxchx                   # transfer entire string
+ 149 00a0 59       	        pop     %ecx                    # restore stack entry counter
+ 150              	
+ 151 00a1 41       	        inc     %ecx                    # increment stack entry counter
+ 152 00a2 3B4D14   	        cmp     20(%ebp), %ecx          # number of stack entries reached?
+ 153 00a5 0F8C64FF 	        jl      nxreg                   # no, show next register
+ 153      FFFF
+ 154              	
+ 155 00ab 07       	        popl    %es
+ 156 00ac 61       	        popal
+ 157 00ad C9       	        leave
+ 158 00ae C3       	        ret
+ 159              	
+ 160              	#------------------------------------------------------------------
+ 161              	        .section        .data
+ 162 00e6 6F4F7353 	eflstr: .ascii  "oOsSzZaApPcC"
+ 162      7A5A6141 
+ 162      70506343 
+ 163 00f2 0B070604 	eflmsk: .byte   11, 7, 6, 4, 2, 0, -1
+ 163      0200FF
+ 164              	#------------------------------------------------------------------
+ 165              	        .section        .text
+ 166              	        .type           get_flags_str, @function
+ 167              	        .globl          get_flags_str
+ 168 00af 90       	        .align          8
+ 169              	get_flags_str:
+ 170 00b0 60       	        pushal
+ 171              	
+ 172 00b1 31DB     	        xor     %ebx, %ebx
+ 173              	.Lloop:
+ 174 00b3 0FBE8BF2 	        movsx   eflmsk(%ebx), %ecx
+ 174      000000
+ 175 00ba 85C9     	        test    %ecx, %ecx
+ 176 00bc 7815     	        js      .Lexit
+ 177 00be 8D345DE6 	        lea     eflstr(,%ebx,2), %esi
+ 177      000000
+ 178 00c5 0FA3C8   	        bt      %ecx, %eax
+ 179 00c8 83D600   	        adc     $0, %esi
+ 180 00cb 8A16     	        mov     (%esi), %dl
+ 181 00cd 88141F   	        mov     %dl, (%edi,%ebx)
+ 182 00d0 43       	        inc     %ebx
+ 183 00d1 EBE0     	        jmp     .Lloop
+ 184              	
+ 185              	.Lexit:
+ 186 00d3 61       	        popal
+ 187 00d4 C3       	        ret
+ 188              	
+DEFINED SYMBOLS
+    src/stacktrace.s:17     .data:0000000000000000 stkname
+    src/stacktrace.s:18     *ABS*:000000000000000b STK_NUM
+    src/stacktrace.s:21     .data:000000000000002c tssname
+                            *ABS*:0000000000000010 TSS_NUM
+    src/stacktrace.s:26     .data:000000000000006c dbgname
+    src/stacktrace.s:28     *ABS*:0000000000000008 DBG_NUM
+    src/stacktrace.s:30     .data:000000000000008c intname
+    src/stacktrace.s:32     .data:000000000000009c regname
+    src/stacktrace.s:34     *ABS*:0000000000000008 REG_NUM
+    src/stacktrace.s:39     .data:00000000000000cc eflname
+    src/stacktrace.s:41     *ABS*:0000000000000013 INT_NUM
+    src/stacktrace.s:43     .data:00000000000000d8 stackbuf
+    src/stacktrace.s:45     *ABS*:000000000000000e BUF_LEN
+    src/stacktrace.s:51     .text:0000000000000000 print_stacktrace
+    src/stacktrace.s:64     .text:000000000000000f nxreg
+    src/stacktrace.s:85     .text:000000000000003c write_flags
+    src/stacktrace.s:90     .text:0000000000000049 skip_flags
+    src/stacktrace.s:169    .text:00000000000000b0 get_flags_str
+    src/stacktrace.s:122    .text:0000000000000081 checkprev
+    src/stacktrace.s:139    .text:000000000000008f transfer
+    src/stacktrace.s:136    .text:000000000000008c regstore
+    src/stacktrace.s:146    .text:000000000000009b nxchx
+    src/stacktrace.s:162    .data:00000000000000e6 eflstr
+    src/stacktrace.s:163    .data:00000000000000f2 eflmsk
+
+UNDEFINED SYMBOLS
+sel_es
+int32_to_hex
+screen_get_page

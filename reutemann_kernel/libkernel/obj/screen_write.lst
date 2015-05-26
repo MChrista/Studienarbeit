@@ -1,0 +1,99 @@
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
+ options passed	: --32 -I../inc -g -almgns=obj/screen_write.lst -c 
+ input file    	: src/screen_write.s
+ output file   	: obj/screen_write.o
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-26T12:17:32.000-0700
+
+   1              	
+   2              	        .extern screen_scrollup
+   3              	        .extern screen_get_pos
+   4              	        .extern screen_set_cursor
+   5              	
+   6              	        .section        .text
+   7              	        .type           screen_write, @function
+   8              	        .globl          screen_write
+   9              	        .align          8
+  10              	screen_write:
+  11 0000 C8040000 	        enter   $4, $0
+  12 0004 60       	        pushal
+  13 0005 06       	        pushl   %es
+  14              	
+  15              	        # point ES:EDI to screen-position
+  16 0006 66B80000 	        mov     $sel_es, %ax            # address video memory
+  17 000a 8EC0     	        mov     %ax, %es                #   with ES register
+  18              	
+  19 000c E8FCFFFF 	        call    screen_get_pos          # get row,col in DX
+  19      FF
+  20 0011 B050     	        mov     $80, %al                # cells-per-row
+  21 0013 F6E6     	        mul     %dh                     # times row-number
+  22 0015 00D0     	        add     %dl, %al                # plus column-number
+  23 0017 80D400   	        adc     $0, %ah                 # as 16-bit value
+  24 001a 0FB7D8   	        movzx   %ax, %ebx               # extend to dword
+  25 001d E8FCFFFF 	        call    screen_get_page
+  25      FF
+  26 0022 C1E00C   	        shl     $12, %eax               # calculate page offset
+  27 0025 8945FC   	        movl    %eax, -4(%ebp)          # and store on stack
+  28 0028 8D3C58   	        lea     (%eax,%ebx,2), %edi     # vram-offset into EDI
+  29              	
+  30              	        # loop to write character-codes to the screen
+  31 002b FC       	        cld
+  32 002c B407     	        mov     $0x07, %ah              # normal text attribute
+  33 002e AC       	nxmchr: lodsb                           # fetch next character
+  34              	
+  35 002f 3C0A     	        cmp     $'\n', %al              # newline?
+  36 0031 740D     	        je      do_nl                   #   yes, do CR/LF
+  37 0033 3C0D     	        cmp     $'\r', %al              # carriage return?
+  38 0035 740B     	        je      do_cr                   #   yes, do CR
+  39              	
+  40 0037 66AB     	do_wr:  stosw                           # write to the display
+  41 0039 FEC2     	        inc     %dl                     # advance column-number
+  42 003b 80FA50   	        cmp     $80, %dl                # end-of-row reached?
+  43 003e 7228     	        jb      advok                   # no, column is ok
+  44 0040 FEC6     	do_nl:  inc     %dh                     # else advance row-number
+  45 0042 B200     	do_cr:  mov     $0, %dl                 # with zero column-number
+  46 0044 80FE17   	        cmp     $23, %dh                # bottom-of-screen reached?
+  47 0047 7207     	        jb      adjpos                  #   no, row is ok
+  48 0049 FECE     	        dec     %dh                     # else reduce row-number
+  49              	        # scrollup screen by one row
+  50 004b E8FCFFFF 	        call    screen_scrollup
+  50      FF
+  51              	adjpos:
+  52              	        # adjust vram offset after CR/LF
+  53 0050 B050     	        mov     $80, %al                # cells-per-row
+  54 0052 F6E6     	        mul     %dh                     # times row-number
+  55 0054 00D0     	        add     %dl, %al                # plus column-number
+  56 0056 80D400   	        adc     $0, %ah                 # as 16-bit value
+  57 0059 0FB7C0   	        movzx   %ax, %eax               # extend to dword
+  58 005c 8D3C4500 	        lea     (,%eax,2), %edi         # vram-offset into EDI
+  58      000000
+  59 0063 037DFC   	        add     -4(%ebp), %edi          # add page offset
+  60 0066 B407     	        mov     $0x07, %ah              # normal text attribute
+  61              	advok:
+  62 0068 E2C4     	        loop    nxmchr                  # again for full string
+  63              	
+  64              	        # adjust hardware cursor-location
+  65 006a E8FCFFFF 	        call    screen_set_cursor
+  65      FF
+  66              	
+  67 006f 07       	        popl    %es
+  68 0070 61       	        popal
+  69 0071 C9       	        leave
+  70 0072 C3       	        ret
+  71              	
+DEFINED SYMBOLS
+  src/screen_write.s:10     .text:0000000000000000 screen_write
+  src/screen_write.s:33     .text:000000000000002e nxmchr
+  src/screen_write.s:44     .text:0000000000000040 do_nl
+  src/screen_write.s:45     .text:0000000000000042 do_cr
+  src/screen_write.s:40     .text:0000000000000037 do_wr
+  src/screen_write.s:61     .text:0000000000000068 advok
+  src/screen_write.s:51     .text:0000000000000050 adjpos
+
+UNDEFINED SYMBOLS
+sel_es
+screen_get_pos
+screen_get_page
+screen_scrollup
+screen_set_cursor

@@ -1,0 +1,50 @@
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
+ options passed	: --32 -I../inc -g -almgns=obj/screen_scrollup.lst -c 
+ input file    	: src/screen_scrollup.s
+ output file   	: obj/screen_scrollup.o
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-26T12:17:32.000-0700
+
+   1              	
+   2              	        .section        .text
+   3              	        .type           screen_scrollup, @function
+   4              	        .globl          screen_scrollup
+   5              	        .extern         screen_get_page
+   6              	        .align          8
+   7              	screen_scrollup:
+   8 0000 C8000000 	        enter   $0, $0
+   9 0004 50       	        push    %eax
+  10 0005 51       	        push    %ecx
+  11 0006 57       	        push    %edi
+  12 0007 56       	        push    %esi
+  13              	
+  14 0008 E8FCFFFF 	        call    screen_get_page
+  14      FF
+  15 000d C1E00C   	        shl     $12, %eax
+  16              	
+  17 0010 FC       	        cld                             # do forward processing
+  18 0011 89C7     	        mov     %eax, %edi
+  19 0013 8DB7A000 	        lea     160(%edi), %esi
+  19      0000
+  20 0019 B9300700 	        mov     $80*23, %ecx
+  20      00
+  21 001e 2666F3A5 	        rep     movsw   %es:(%esi), %es:(%edi)
+  22              	        # overwrite bottom line with spaces
+  23 0022 66B82007 	        mov     $0x0720, %ax
+  24 0026 B9500000 	        mov     $80, %ecx
+  24      00
+  25 002b 66F3AB   	        rep     stosw
+  26              	
+  27 002e 5E       	        pop     %esi
+  28 002f 5F       	        pop     %edi
+  29 0030 59       	        pop     %ecx
+  30 0031 58       	        pop     %eax
+  31 0032 C9       	        leave
+  32 0033 C3       	        ret
+  33              	
+DEFINED SYMBOLS
+src/screen_scrollup.s:7      .text:0000000000000000 screen_scrollup
+
+UNDEFINED SYMBOLS
+screen_get_page

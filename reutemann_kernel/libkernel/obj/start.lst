@@ -1,0 +1,497 @@
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
+ options passed	: --32 -I../inc -g -almgns=obj/start.lst -c 
+ input file    	: src/start.s
+ output file   	: obj/start.o
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-26T12:17:32.000-0700
+
+   1              	#-----------------------------------------------------------------
+   2              	# start.s
+   3              	#
+   4              	# This module contains the '_start' program entry point and
+   5              	# program signature word. It transfers from 16-bit real-mode
+   6              	# to 32-bit protected mode and calls the 'main' function of
+   7              	# some other module. After completion of the main function,
+   8              	# it returns back to 16-bit real-mode and finally back to the
+   9              	# boot loader.
+  10              	#
+  11              	# NOTE: This program begins executing with CS:IP = 0x1000:OFFS,
+  12              	# where the 16-bit offset to _start (OFFS) is stored in location
+  13              	# 0x1000:0002.
+  14              	#
+  15              	#-----------------------------------------------------------------
+  16              	
+  17              	
+  18              	#==================================================================
+  19              	        .section        .signature, "a", @progbits
+  20 0000 44484257 	        .ascii  "DHBW"                  # application 'signature'
+  21 0004 00000000 	        .long   0
+  22 0008 00000000 	        .long   _start                  # store start address
+  23 000c 00000000 	        .long   etext
+  24 0010 00000000 	        .long   edata
+  25              	
+  26              	
+  27              	        .equ    selPM32, 0x10
+  28              	        .equ    selRM16, 0x18
+  29              	
+  30              	#==================================================================
+  31              	# SECTION .data
+  32              	#==================================================================
+  33              	        .section        .data
+  34              	        .align  4
+  35              	#------------------------------------------------------------------
+  36              	# real-mode stack pointer and segment
+  37              	#------------------------------------------------------------------
+  38 0000 00000000 	rmstack:.word   0, 0                    # 32-bit ss:sp  (16-bit RM)
+  39              	#------------------------------------------------------------------
+  40              	# here goes the backup of the real-mode interrupt vector table
+  41              	#------------------------------------------------------------------
+  42 0004 00000000 	rmIVT:  .word   0x0000, 0x0000, 0x0000  # image for IDTR register
+  42      0000
+  43              	#------------------------------------------------------------------
+  44              	#
+  45              	#  struct tm {
+  46              	#      int tm_sec;         /* seconds (SS) */
+  47              	#      int tm_min;         /* minutes (MM) */
+  48              	#      int tm_hour;        /* hours (HH) */
+  49              	#      int tm_mday;        /* day of the month (DD) */
+  50              	#      int tm_mon;         /* month (MM) */
+  51              	#      int tm_year;        /* year (YY) */
+  52              	#      int tm_wday;        /* day of the week */
+  53              	#      int tm_yday;        /* day in the year */
+  54              	#      int tm_isdst;       /* daylight saving time */
+  55              	#  };
+  56              	#
+  57              	#------------------------------------------------------------------
+  58              	# CMOS RTC data structures
+  59              	#
+  60              	#                         SS    MM    HH    DD    MM    YY
+  61              	#------------------------------------------------------------------
+  62 000a 00020407 	cmos_rtc_idx:   .byte   0x00, 0x02, 0x04, 0x07, 0x08, 0x09
+  62      0809
+  63 0010 0603000F 	cmos_str_idx:   .byte      6,    3,    0,   15,   12,    9
+  63      0C09
+  64 0016 00000000 	cmos_rtc_reg:   .byte      0,    0,    0,    0,    0,    0
+  64      0000
+  65 001c 68683A6D 	cmos_rtc_dt:    .ascii  "hh:mm:ss YY-MM-DD"
+  65      6D3A7373 
+  65      2059592D 
+  65      4D4D2D44 
+  65      44
+  66              	#------------------------------------------------------------------
+  67 002d 00       	a20_enabled:    .byte   0x00
+  68              	#------------------------------------------------------------------
+  69 002e 0000     	                .align  4
+  70 0030 00000000 	memsizes:       .word   0, 0, 0
+  70      0000
+  71              	
+  72              	
+  73              	#==================================================================
+  74              	# 16-Bit Code
+  75              	# SECTION .text16
+  76              	#==================================================================
+  77              	        .section        .text16, "ax", @progbits
+  78              	        .code16
+  79              	        .globl  _start
+  80              	_start:
+  81              	
+  82              	        #----------------------------------------------------------
+  83              	        # disable hardware interrupts
+  84              	        #----------------------------------------------------------
+  85 0000 FA       	        cli
+  86              	
+  87              	        #----------------------------------------------------------
+  88              	        # setup real-mode data segments
+  89              	        #----------------------------------------------------------
+  90 0001 B80020   	        mov     $0x2000, %ax
+  91 0004 8ED8     	        mov     %ax, %ds
+  92 0006 8EC0     	        mov     %ax, %es
+  93 0008 8EE8     	        mov     %ax, %gs
+  94              	
+  95              	        #----------------------------------------------------------
+  96              	        # preserve the caller's stack-address (for a return later)
+  97              	        #----------------------------------------------------------
+  98 000a 89260000 	        mov     %sp, rmstack+0          # save SP register-value
+  99 000e 8C160200 	        mov     %ss, rmstack+2          # save SS register-value
+ 100              	
+ 101              	        #----------------------------------------------------------
+ 102              	        # store real-mode IVT
+ 103              	        #----------------------------------------------------------
+ 104 0012 0F010E04 	        sidt    rmIVT
+ 104      00
+ 105              	
+ 106              	        #----------------------------------------------------------
+ 107              	        # turn on the A20 address-line
+ 108              	        #----------------------------------------------------------
+ 109 0017 E8B600   	        call    a20_enable
+ 110              	
+ 111 001a BF3000   	        mov     $memsizes, %di
+ 112 001d E82001   	        call    detect_memory
+ 113              	
+ 114 0020 E85500   	        call    read_cmos_rtc
+ 115              	
+ 116              	        #----------------------------------------------------------
+ 117              	        # enable protected mode
+ 118              	        #----------------------------------------------------------
+ 119 0023 0F20C0   	        mov     %cr0, %eax              # get machine status
+ 120 0026 660FBAE8 	        bts     $0, %eax                # set PE-bit's image
+ 120      00
+ 121 002b 0F22C0   	        mov     %eax, %cr0              # turn on the PE-bit
+ 122              	
+ 123              	        #----------------------------------------------------------
+ 124              	        # load new GDT and IDT for protected mode
+ 125              	        #----------------------------------------------------------
+ 126 002e 660F0116 	        lgdtl   regGDT
+ 126      0000
+ 127 0034 660F011E 	        lidtl   regIDT
+ 127      0000
+ 128              	
+ 129              	        #----------------------------------------------------------
+ 130              	        # transfer to 32-bit protected mode via call gate
+ 131              	        #----------------------------------------------------------
+ 132 003a 9A000010 	        lcall   $selPM32, $0
+ 132      00
+ 133              	
+ 134              	        #----------------------------------------------------------
+ 135              	        # transfer to this location from protected mode is via call
+ 136              	        # gate
+ 137              	        #----------------------------------------------------------
+ 138              	        .global rm_enter
+ 139              	rm_enter:
+ 140 003f FA       	        cli
+ 141              	
+ 142              	        #----------------------------------------------------------
+ 143              	        # disable protected mode
+ 144              	        #----------------------------------------------------------
+ 145 0040 0F20C0   	        mov     %cr0, %eax              # get machine's status
+ 146 0043 660FBAF0 	        btr     $0, %eax                # clear PE-bit's image
+ 146      00
+ 147 0048 0F22C0   	        mov     %eax, %cr0              # turn off protection
+ 148              	
+ 149              	        #----------------------------------------------------------
+ 150              	        # clear 32-bit registers
+ 151              	        #----------------------------------------------------------
+ 152 004b 6631C0   	        xor     %eax, %eax
+ 153 004e 6631DB   	        xor     %ebx, %ebx
+ 154 0051 6631C9   	        xor     %ecx, %ecx
+ 155 0054 6631D2   	        xor     %edx, %edx
+ 156 0057 6631F6   	        xor     %esi, %esi
+ 157 005a 6631FF   	        xor     %edi, %edi
+ 158              	
+ 159              	        #----------------------------------------------------------
+ 160              	        # return to real-mode...
+ 161              	        #----------------------------------------------------------
+ 162 005d EA620000 	        ljmp    $0x1000, $rm            # code-segment into CS
+ 162      10
+ 163              	rm:
+ 164              	        #----------------------------------------------------------
+ 165              	        # restore real-mode interrupt vector table
+ 166              	        #----------------------------------------------------------
+ 167 0062 B80020   	        mov     $0x2000, %ax
+ 168 0065 8ED8     	        mov     %ax, %ds
+ 169 0067 0F011E04 	        lidt    rmIVT
+ 169      00
+ 170              	
+ 171              	        #----------------------------------------------------------
+ 172              	        # restore real-mode stack-address and return to boot loader
+ 173              	        #----------------------------------------------------------
+ 174 006c 0FB22600 	        lss     rmstack, %sp            # recover saved (SS:SP)
+ 174      00
+ 175              	        #----------------------------------------------------------
+ 176              	        # re-enable hardware interrupts again
+ 177              	        #----------------------------------------------------------
+ 178 0071 FB       	        sti
+ 179              	
+ 180              	        #----------------------------------------------------------
+ 181              	        # far-return to boot loader
+ 182              	        #----------------------------------------------------------
+ 183 0072 CB       	        lret
+ 184              	
+ 185              	
+ 186              	#------------------------------------------------------------------
+ 187 0073 908D7426 	        .align  8
+ 187      00
+ 188              	read_cmos_rtc:
+ 189              	#
+ 190              	# This procedure reads the date/time fields from the CMOS RTC
+ 191              	#
+ 192 0078 C8000000 	        enter   $0, $0
+ 193 007c 60       	        pushaw
+ 194              	
+ 195              	.Lwait_rtc_uip_set:
+ 196 007d B88A00   	        mov     $0x8A, %ax
+ 197 0080 E670     	        out     %al, $0x70
+ 198 0082 E471     	        in      $0x71, %al
+ 199 0084 A880     	        test    $0x80, %al
+ 200 0086 74F5     	        jz      .Lwait_rtc_uip_set
+ 201              	
+ 202              	.Lwait_rtc_uip_clear:
+ 203 0088 B80A00   	        mov     $0x0A, %ax
+ 204 008b E670     	        out     %al, $0x70
+ 205 008d E471     	        in      $0x71, %al
+ 206 008f A880     	        test    $0x80, %al
+ 207 0091 75F5     	        jnz     .Lwait_rtc_uip_clear
+ 208              	
+ 209 0093 31F6     	        xor     %si, %si
+ 210              	.Lrtc_reg_loop:
+ 211 0095 8A840A00 	        mov     cmos_rtc_idx(%si), %al
+ 212 0099 E670     	        out     %al, $0x70
+ 213 009b E471     	        in      $0x71, %al
+ 214 009d 88C7     	        mov     %al, %bh
+ 215 009f 80E70F   	        and     $0xf, %bh
+ 216 00a2 C0E804   	        shr     $4, %al
+ 217 00a5 88C3     	        mov     %al, %bl
+ 218              	
+ 219 00a7 B20A     	        mov     $10, %dl
+ 220 00a9 88D8     	        mov     %bl, %al
+ 221 00ab F6E2     	        mul     %dl
+ 222 00ad 00F8     	        add     %bh, %al
+ 223 00af 88841600 	        mov     %al,cmos_rtc_reg(%si)
+ 224              	
+ 225 00b3 81C33030 	        add     $0x3030, %bx
+ 226 00b7 0FB6BC10 	        movzxb  cmos_str_idx(%si),%di
+ 226      00
+ 227 00bc 899D1C00 	        mov     %bx, cmos_rtc_dt(%di)
+ 228 00c0 46       	        inc     %si
+ 229 00c1 83FE06   	        cmp     $6, %si
+ 230 00c4 72CF     	        jb      .Lrtc_reg_loop
+ 231              	
+ 232 00c6 61       	        popaw
+ 233 00c7 C9       	        leave
+ 234 00c8 C3       	        ret
+ 235              	
+ 236              	
+ 237              	#------------------------------------------------------------------
+ 238 00c9 8DB42600 	        .align  8
+ 238      000000
+ 239              	a20_enable:
+ 240 00d0 C8000000 	        enter   $0, $0
+ 241              	
+ 242 00d4 E83100   	        call    a20_is_enabled
+ 243 00d7 A22D00   	        mov     %al, a20_enabled
+ 244 00da 84C0     	        test    %al, %al
+ 245 00dc 7524     	        jnz     .La20_enabled
+ 246              	
+ 247 00de B80124   	        mov     $0x2401, %ax
+ 248 00e1 CD15     	        int     $0x15                   # enable A20 using BIOS
+ 249              	
+ 250 00e3 E82200   	        call    a20_is_enabled
+ 251 00e6 D0E0     	        shl     $1, %al
+ 252 00e8 08062D00 	        or      %al, a20_enabled
+ 253 00ec 84C0     	        test    %al, %al
+ 254 00ee 7512     	        jnz     .La20_enabled
+ 255              	
+ 256 00f0 E492     	        in      $0x92, %al              # System Control Port
+ 257 00f2 0C02     	        or      $0x02, %al              # set bit #1 (Fast_A20)
+ 258 00f4 24FE     	        and     $0xfe, %al              # mask-out bit #0
+ 259 00f6 E692     	        out     %al, $0x92              # output port settings
+ 260              	
+ 261 00f8 E80D00   	        call    a20_is_enabled
+ 262 00fb C0E002   	        shl     $2, %al
+ 263 00fe 08062D00 	        or      %al, a20_enabled
+ 264              	.La20_enabled:
+ 265 0102 C9       	        leave
+ 266 0103 C3       	        ret
+ 267              	
+ 268              	
+ 269              	#------------------------------------------------------------------
+ 270 0104 8D742600 	        .align  8
+ 271              	a20_is_enabled:
+ 272 0108 C8000000 	        enter   $0, $0
+ 273 010c 1E       	        push    %ds
+ 274 010d 06       	        push    %es
+ 275              	
+ 276              	        #----------------------------------------------------------
+ 277              	        # the bootload signature 0x55aa is at location 0x0000:0x0500
+ 278              	        # in case the A20 address line is disabled, the address
+ 279              	        # 0xffff:0x0510 is wrapped-around to the same address above
+ 280              	        #----------------------------------------------------------
+ 281 010e 31C0     	        xor     %ax, %ax
+ 282 0110 8EC0     	        mov     %ax, %es          # es = 0x0000
+ 283 0112 BF0005   	        mov     $0x0500, %di      # bootloader signature address
+ 284 0115 F7D0     	        not     %ax
+ 285 0117 8ED8     	        mov     %ax, %ds          # ds = 0xffff
+ 286 0119 BE1005   	        mov     $0x0510, %si      # wrapped-around address
+ 287              	
+ 288 011c 268A05   	        movb    %es:(%di), %al    # al <- *(0x0000:0x0500)
+ 289 011f 8A24     	        movb    %ds:(%si), %ah    # ah <- *(0xffff:0x0510)
+ 290 0121 50       	        push    %ax               # save original values on stack
+ 291              	
+ 292 0122 26C60500 	        movb    $0x00, %es:(%di)
+ 293 0126 C604FF   	        movb    $0xff, %ds:(%si)
+ 294 0129 26803DFF 	        cmpb    $0xff, %es:(%di)
+ 295              	
+ 296 012d 58       	        pop     %ax               # restore values from stack
+ 297 012e 268805   	        movb    %al, %es:(%di)
+ 298 0131 8824     	        movb    %ah, %ds:(%si)
+ 299 0133 0F95C0   	        setne   %al
+ 300              	
+ 301 0136 07       	        pop     %es
+ 302 0137 1F       	        pop     %ds
+ 303 0138 C9       	        leave
+ 304 0139 C3       	        ret
+ 305              	
+ 306              	
+ 307              	#------------------------------------------------------------------
+ 308 013a 8DB60000 	        .align  8
+ 308      0000
+ 309              	detect_memory:
+ 310 0140 C8000000 	        enter   $0, $0
+ 311 0144 60       	        pusha
+ 312              	
+ 313              	        #----------------------------------------------------------
+ 314              	        # invoke ROM-BIOS service to obtain memory-size (in KB)
+ 315              	        #----------------------------------------------------------
+ 316 0145 31C0     	        xor     %ax, %ax
+ 317 0147 CD12     	        int     $0x12        # get ram size below 1MB into AX
+ 318 0149 7227     	        jc      .Lerr
+ 319 014b 85C0     	        test    %ax, %ax
+ 320 014d 7423     	        jz      .Lerr
+ 321 014f 8905     	        mov     %ax, (%di)
+ 322              	
+ 323 0151 31C9     	        xor     %cx, %cx
+ 324 0153 31D2     	        xor     %dx, %dx
+ 325 0155 B801E8   	        mov     $0xe801, %ax
+ 326 0158 CD15     	        int     $0x15        # request upper memory size
+ 327 015a 7216     	        jc      .Lerr
+ 328 015c 80FC86   	        cmp     $0x86, %ah   # unsupported function?
+ 329 015f 7411     	        je      .Lerr
+ 330 0161 80FC80   	        cmp     $0x80, %ah   # invalid command?
+ 331 0164 740C     	        je      .Lerr
+ 332 0166 E304     	        jcxz    .Luseax      # was the CX result invalid?
+ 333 0168 89C8     	        mov     %cx, %ax
+ 334 016a 89D3     	        mov     %dx, %bx
+ 335              	.Luseax:
+ 336              	        # AX = number of contiguous Kb, 1M to 16M
+ 337              	        # BX = contiguous 64Kb pages above 16M
+ 338 016c 894502   	        mov     %ax, 2(%di)
+ 339 016f 895D04   	        mov     %bx, 4(%di)
+ 340              	.Lerr:
+ 341 0172 61       	        popa
+ 342 0173 C9       	        leave
+ 343 0174 C3       	        ret
+ 344              	
+ 345              	
+ 346              	#==================================================================
+ 347              	# SECTION .data
+ 348              	#==================================================================
+ 349              	        .section        .data
+ 350              	
+ 351              	#------------------------------------------------------------------
+ 352              	# protected mode stack pointer and segment
+ 353              	#------------------------------------------------------------------
+ 354 0036 0000     	        .align  4
+ 355 0038 00400000 	pmstack:.long   0x4000                  # 48-bit ss:esp (32-bit PM)
+ 356 003c 0000     	        .word   privSS
+ 357              	
+ 358              	#------------------------------------------------------------------
+ 359              	# seconds since epoche
+ 360              	#------------------------------------------------------------------
+ 361 003e 0000     	        .align  4
+ 362              	        .globl  ticks
+ 363 0040 00000000 	ticks:  .long   0
+ 364              	#------------------------------------------------------------------
+ 365              	
+ 366              	
+ 367              	#==================================================================
+ 368              	# 32-Bit Code
+ 369              	# SECTION .text
+ 370              	#==================================================================
+ 371              	        .section        .text
+ 372              	        .code32
+ 373              	        .global pm_enter
+ 374              	        .align  8
+ 375              	pm_enter:
+ 376              	        #----------------------------------------------------------
+ 377              	        # setup protected-mode data segments
+ 378              	        #----------------------------------------------------------
+ 379 0000 66B80000 	        mov     $privDS, %ax
+ 380 0004 8ED8     	        mov     %ax, %ds
+ 381 0006 8EE8     	        mov     %ax, %gs
+ 382              	
+ 383              	        #----------------------------------------------------------
+ 384              	        # setup protected-mode stack segment
+ 385              	        #----------------------------------------------------------
+ 386 0008 0FB22538 	        lss     pmstack, %esp
+ 386      000000
+ 387              	
+ 388              	        #----------------------------------------------------------
+ 389              	        # initialise bss section with zero words
+ 390              	        #----------------------------------------------------------
+ 391 000f BF000000 	        mov     $bss, %edi
+ 391      00
+ 392 0014 31C0     	        xor     %eax, %eax
+ 393 0016 B9000000 	        mov     $end, %ecx
+ 393      00
+ 394 001b 29F9     	        sub     %edi, %ecx
+ 395 001d C1E902   	        shr     $2, %ecx
+ 396 0020 FC       	        cld
+ 397 0021 F3AB     	        rep     stosl
+ 398              	
+ 399              	        #----------------------------------------------------------
+ 400              	        # setup access to CGA video memory using the ES segment
+ 401              	        #----------------------------------------------------------
+ 402 0023 66B80000 	        mov     $sel_es, %ax
+ 403 0027 8EC0     	        mov     %ax, %es
+ 404              	
+ 405              	        #----------------------------------------------------------
+ 406              	        # convert RTC segmented time to ticks value
+ 407              	        #----------------------------------------------------------
+ 408 0029 68160000 	        push    $cmos_rtc_reg
+ 408      00
+ 409 002e E8FCFFFF 	        call    rtc_mktime
+ 409      FF
+ 410 0033 83C404   	        add     $4, %esp
+ 411 0036 A3000000 	        mov     %eax, ticks
+ 411      00
+ 412              	
+ 413              	        #----------------------------------------------------------
+ 414              	        # call kernel main routine...
+ 415              	        #----------------------------------------------------------
+ 416 003b E8FCFFFF 	        call    main
+ 416      FF
+ 417              	
+ 418              	        #----------------------------------------------------------
+ 419              	        # transfer back to 16-bit real-mode via call gate
+ 420              	        #----------------------------------------------------------
+ 421 0040 9A000000 	        lcall    $selRM16, $0
+ 421      001800
+ 422              	
+ 423              	
+ 424              	#------------------------------------------------------------------
+ 425              	        .end                            # nothing more to assemble
+DEFINED SYMBOLS
+         src/start.s:80     .text16:0000000000000000 _start
+         src/start.s:27     *ABS*:0000000000000010 selPM32
+         src/start.s:28     *ABS*:0000000000000018 selRM16
+         src/start.s:38     .data:0000000000000000 rmstack
+         src/start.s:42     .data:0000000000000004 rmIVT
+         src/start.s:62     .data:000000000000000a cmos_rtc_idx
+         src/start.s:63     .data:0000000000000010 cmos_str_idx
+         src/start.s:64     .data:0000000000000016 cmos_rtc_reg
+         src/start.s:65     .data:000000000000001c cmos_rtc_dt
+         src/start.s:67     .data:000000000000002d a20_enabled
+         src/start.s:70     .data:0000000000000030 memsizes
+         src/start.s:239    .text16:00000000000000d0 a20_enable
+         src/start.s:309    .text16:0000000000000140 detect_memory
+         src/start.s:188    .text16:0000000000000078 read_cmos_rtc
+         src/start.s:139    .text16:000000000000003f rm_enter
+         src/start.s:163    .text16:0000000000000062 rm
+         src/start.s:271    .text16:0000000000000108 a20_is_enabled
+         src/start.s:355    .data:0000000000000038 pmstack
+         src/start.s:363    .data:0000000000000040 ticks
+         src/start.s:375    .text:0000000000000000 pm_enter
+
+UNDEFINED SYMBOLS
+etext
+edata
+regGDT
+regIDT
+privSS
+privDS
+bss
+end
+sel_es
+rtc_mktime
+main

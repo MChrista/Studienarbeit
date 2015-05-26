@@ -1,0 +1,73 @@
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
+ options passed	: --32 -I../inc -g -almgns=obj/screen_set_cursor.lst -c 
+ input file    	: src/screen_set_cursor.s
+ output file   	: obj/screen_set_cursor.o
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-26T11:12:45.000-0700
+
+   1              	
+   2              	        .equ    BS_VIDEO_PAGE, 0x62
+   3              	        .equ    BS_VIDEO_CURSOR, 0x50
+   4              	        .equ    CRT_PORT, 0x03D4
+   5              	        .equ    CRT_CURSOR_HI, 0x0E
+   6              	        .equ    CRT_CURSOR_LO, 0x0F
+   7              	
+   8              	        .section        .text
+   9              	        .type           screen_set_cursor, @function
+  10              	        .globl          screen_set_cursor
+  11              	        .align          8
+  12              	screen_set_cursor:
+  13 0000 C8000000 	        enter   $0, $0
+  14 0004 50       	        push    %eax
+  15 0005 53       	        push    %ebx
+  16 0006 51       	        push    %ecx
+  17 0007 52       	        push    %edx
+  18 0008 1E       	        pushl   %ds
+  19 0009 0FA0     	        pushl   %fs
+  20              	
+  21 000b 66B80000 	        mov     $sel_bs, %ax            # address rom-bios data
+  22 000f 8EE0     	        mov     %ax, %fs                #   using FS register
+  23 0011 66B80000 	        mov     $privDS, %ax
+  24 0015 8ED8     	        mov     %ax, %ds
+  25 0017 640FB61D 	        movzxb  %fs:(0x62), %ebx        # get current page
+  25      62000000 
+  26 001f 64668914 	        mov     %dx, %fs:0x50(,%ebx,2)  # write row,col for current page
+  26      5D500000 
+  26      00
+  27              	
+  28 0028 66C1E30B 	        shl     $11, %bx                # bx = bx * 2048
+  29 002c B050     	        mov     $80, %al
+  30 002e F6E6     	        mul     %dh
+  31 0030 00D0     	        add     %dl, %al
+  32 0032 80D400   	        adc     $0, %ah
+  33 0035 6601C3   	        add     %ax, %bx
+  34              	
+  35 0038 66BAD403 	        mov     $CRT_PORT, %dx          # CRTC i/o-port
+  36 003c B00E     	        mov     $CRT_CURSOR_HI, %al     # cursor-offset HI
+  37 003e 88FC     	        mov     %bh, %ah                # offset 15..8
+  38 0040 66EF     	        out     %ax, %dx
+  39 0042 B00F     	        mov     $CRT_CURSOR_LO, %al     # cursor-offset LO
+  40 0044 88DC     	        mov     %bl, %ah                # offset 7..0
+  41 0046 66EF     	        out     %ax, %dx
+  42              	
+  43 0048 0FA1     	        popl    %fs
+  44 004a 1F       	        popl    %ds
+  45 004b 5A       	        pop     %edx
+  46 004c 59       	        pop     %ecx
+  47 004d 5B       	        pop     %ebx
+  48 004e 58       	        pop     %eax
+  49 004f C9       	        leave
+  50 0050 C3       	        ret
+  51              	
+DEFINED SYMBOLS
+src/screen_set_cursor.s:2      *ABS*:0000000000000062 BS_VIDEO_PAGE
+src/screen_set_cursor.s:3      *ABS*:0000000000000050 BS_VIDEO_CURSOR
+src/screen_set_cursor.s:4      *ABS*:00000000000003d4 CRT_PORT
+src/screen_set_cursor.s:5      *ABS*:000000000000000e CRT_CURSOR_HI
+src/screen_set_cursor.s:6      *ABS*:000000000000000f CRT_CURSOR_LO
+src/screen_set_cursor.s:12     .text:0000000000000000 screen_set_cursor
+
+UNDEFINED SYMBOLS
+sel_bs
+privDS

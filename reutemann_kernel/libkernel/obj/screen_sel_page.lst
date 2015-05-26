@@ -1,0 +1,85 @@
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
+ options passed	: --32 -I../inc -g -almgns=obj/screen_sel_page.lst -c 
+ input file    	: src/screen_sel_page.s
+ output file   	: obj/screen_sel_page.o
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-26T12:17:32.000-0700
+
+   1              	
+   2              	        .equ    CRT_PORT,      0x03D4
+   3              	        .equ    CRT_PAGE_HI,     0x0C
+   4              	        .equ    CRT_PAGE_LO,     0x0D
+   5              	        .equ    CRT_CURSOR_HI,   0x0E
+   6              	        .equ    CRT_CURSOR_LO,   0x0F
+   7              	
+   8              	        .section        .text
+   9              	        .type           screen_sel_page, @function
+  10              	        .globl          screen_sel_page
+  11              	        .align          8
+  12              	screen_sel_page:
+  13 0000 C8000000 	        enter   $0, $0
+  14 0004 50       	        push    %eax
+  15 0005 53       	        push    %ebx
+  16 0006 52       	        push    %edx
+  17 0007 1E       	        pushl   %ds
+  18 0008 0FA0     	        pushl   %fs
+  19              	
+  20 000a 66BB0000 	        mov     $sel_bs, %bx            # address rom-bios data
+  21 000e 8EE3     	        mov     %bx, %fs                #   using FS register
+  22              	
+  23 0010 83E003   	        and     $0x03, %eax
+  24 0013 50       	        push    %eax
+  25 0014 6689C3   	        mov     %ax, %bx
+  26 0017 66C1E30B 	        shl     $11, %bx                # multiply by 0x1000/2
+  27 001b 66BAD403 	        mov     $CRT_PORT, %dx          # CRTC i/o-port
+  28 001f B00C     	        mov     $CRT_PAGE_HI, %al       # page offset HI
+  29 0021 88FC     	        mov     %bh, %ah                # offset 15..8
+  30 0023 66EF     	        out     %ax, %dx
+  31 0025 B00D     	        mov     $CRT_PAGE_LO, %al       # page offset LO
+  32 0027 88DC     	        mov     %bl, %ah                # offset 7..0
+  33 0029 66EF     	        out     %ax, %dx
+  34              	
+  35 002b 66B80000 	        mov     $privDS, %ax
+  36 002f 8ED8     	        mov     %ax, %ds
+  37 0031 58       	        pop     %eax
+  38 0032 64A26200 	        mov     %al, %fs:(0x62)         # set current page
+  38      0000
+  39 0038 64668B1C 	        mov     %fs:0x50(,%eax,2), %bx  # read row,col for current page
+  39      45500000 
+  39      00
+  40              	
+  41 0041 66C1E30B 	        shl     $11, %bx                # bx = bx * 2048
+  42 0045 B050     	        mov     $80, %al
+  43 0047 F6E6     	        mul     %dh
+  44 0049 00D0     	        add     %dl, %al
+  45 004b 80D400   	        adc     $0, %ah
+  46 004e 6601C3   	        add     %ax, %bx
+  47              	
+  48 0051 66BAD403 	        mov     $CRT_PORT, %dx          # CRTC i/o-port
+  49 0055 B00E     	        mov     $CRT_CURSOR_HI, %al     # cursor-offset HI
+  50 0057 88FC     	        mov     %bh, %ah                # offset 15..8
+  51 0059 66EF     	        out     %ax, %dx
+  52 005b B00F     	        mov     $CRT_CURSOR_LO, %al     # cursor-offset LO
+  53 005d 88DC     	        mov     %bl, %ah                # offset 7..0
+  54 005f 66EF     	        out     %ax, %dx
+  55              	
+  56 0061 0FA1     	        popl    %fs
+  57 0063 1F       	        popl    %ds
+  58 0064 5A       	        pop     %edx
+  59 0065 5B       	        pop     %ebx
+  60 0066 58       	        pop     %eax
+  61 0067 C9       	        leave
+  62 0068 C3       	        ret
+  63              	
+DEFINED SYMBOLS
+src/screen_sel_page.s:2      *ABS*:00000000000003d4 CRT_PORT
+src/screen_sel_page.s:3      *ABS*:000000000000000c CRT_PAGE_HI
+src/screen_sel_page.s:4      *ABS*:000000000000000d CRT_PAGE_LO
+src/screen_sel_page.s:5      *ABS*:000000000000000e CRT_CURSOR_HI
+src/screen_sel_page.s:6      *ABS*:000000000000000f CRT_CURSOR_LO
+src/screen_sel_page.s:12     .text:0000000000000000 screen_sel_page
+
+UNDEFINED SYMBOLS
+sel_bs
+privDS

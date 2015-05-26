@@ -1,0 +1,290 @@
+Archive member included to satisfy reference by file (symbol)
+
+../libkernel/libkernel.a(rtc_mktime.o)
+                              ../libkernel/obj/start.o (rtc_mktime)
+../libkernel/libkernel.a(gpf.o)
+                              pmhello.o (isrGPF)
+../libkernel/libkernel.a(stacktrace.o)
+                              ../libkernel/libkernel.a(gpf.o) (stkname)
+../libkernel/libkernel.a(hexdigits.o)
+                              pmhello.o (hex_digits)
+../libkernel/libkernel.a(int32_to_hex.o)
+                              ../libkernel/libkernel.a(stacktrace.o) (int32_to_hex)
+../libkernel/libkernel.a(screen_get_page.o)
+                              ../libkernel/libkernel.a(stacktrace.o) (screen_get_page)
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD pmhello.o
+                0x0000000000010000                LD_DATA_ADDR = 0x10000
+                0x0000000000018000                LD_BSS_ADDR = 0x18000
+                0x0000000000010000                LD_TEXT_START = 0x10000
+                0x0000000000020000                LD_DATA_START = (LD_TEXT_START + LD_DATA_ADDR)
+                0x0000000000028000                LD_BSS_START = (LD_TEXT_START + LD_BSS_ADDR)
+
+.signature      0x0000000000000000       0x20
+ start.o(.signature)
+ .signature     0x0000000000000000       0x14 ../libkernel/obj/start.o
+ .signature     0x0000000000000014        0xc pmhello.o
+
+.eh_frame       0x0000000000000020       0x3c
+ .eh_frame      0x0000000000000020       0x3c ../libkernel/libkernel.a(rtc_mktime.o)
+
+.note.gnu.build-id
+                0x000000000000005c       0x20
+ *(.note.gnu.build-id)
+ .note.gnu.build-id
+                0x000000000000005c       0x20 pmhello.o
+
+.text16         0x0000000000000080      0x180
+ start.o(.text16)
+ .text16        0x0000000000000080      0x175 ../libkernel/obj/start.o
+                0x0000000000000080                _start
+                0x00000000000000bf                rm_enter
+ *(.text16)
+                0x0000000000000200                . = ALIGN (0x10)
+ *fill*         0x00000000000001f5        0xb 
+
+.text           0x0000000000000200      0x301
+                0x0000000000000200                code = .
+                0x0000000000000200                _code = .
+                0x0000000000000200                __code = .
+ start.o(.text)
+ .text          0x0000000000000200       0x47 ../libkernel/obj/start.o
+                0x0000000000000200                pm_enter
+ *(.text)
+ .text          0x0000000000000247       0x93 pmhello.o
+                0x0000000000000247                main
+                0x00000000000002d8                bail_out
+ .text          0x00000000000002da       0x5d ../libkernel/libkernel.a(rtc_mktime.o)
+                0x00000000000002da                rtc_mktime
+ *fill*         0x0000000000000337        0x9 
+ .text          0x0000000000000340       0x80 ../libkernel/libkernel.a(gpf.o)
+                0x0000000000000340                isrGPF
+ .text          0x00000000000003c0       0xd5 ../libkernel/libkernel.a(stacktrace.o)
+                0x00000000000003c0                print_stacktrace
+                0x0000000000000470                get_flags_str
+ *fill*         0x0000000000000495        0xb 
+ .text          0x00000000000004a0       0x21 ../libkernel/libkernel.a(int32_to_hex.o)
+                0x00000000000004a0                int32_to_hex
+ *fill*         0x00000000000004c1        0x7 
+ .text          0x00000000000004c8       0x39 ../libkernel/libkernel.a(screen_get_page.o)
+                0x00000000000004c8                screen_get_page
+                0x0000000000000501                PROVIDE (etext, .)
+
+.iplt           0x0000000000000510        0x0
+ .iplt          0x0000000000000510        0x0 pmhello.o
+
+.rel.dyn        0x0000000000000504        0x0
+ .rel.iplt      0x0000000000000504        0x0 pmhello.o
+ .rel.text      0x0000000000000504        0x0 pmhello.o
+ .rel.signature
+                0x0000000000000504        0x0 pmhello.o
+
+.data           0x0000000000000000      0xb10 load address 0x0000000000010000
+                0x0000000000000000                data = .
+                0x0000000000000000                _data = .
+                0x0000000000000000                __data = .
+                0x0000000000000000                sdata = ADDR (.data)
+ *(.data)
+ .data          0x0000000000000000      0x895 pmhello.o
+                0x0000000000000000                theGDT
+                0x0000000000000060                regGDT
+                0x0000000000000070                theIDT
+                0x0000000000000870                regIDT
+ *fill*         0x0000000000000895        0x3 
+ .data          0x0000000000000898       0x44 ../libkernel/obj/start.o
+                0x00000000000008d8                ticks
+ *fill*         0x00000000000008dc        0x4 
+ .data          0x00000000000008e0      0x120 ../libkernel/libkernel.a(rtc_mktime.o)
+                0x00000000000008e0                year_days
+                0x00000000000009c0                month_days
+ .data          0x0000000000000a00        0x0 ../libkernel/libkernel.a(gpf.o)
+ .data          0x0000000000000a00       0xf9 ../libkernel/libkernel.a(stacktrace.o)
+                0x0000000000000a00                stkname
+                0x0000000000000a2c                tssname
+                0x0000000000000a6c                dbgname
+                0x0000000000000a8c                intname
+                0x0000000000000a9c                regname
+ *fill*         0x0000000000000af9        0x3 
+ .data          0x0000000000000afc       0x10 ../libkernel/libkernel.a(hexdigits.o)
+                0x0000000000000afc                hex_digits
+ .data          0x0000000000000b0c        0x0 ../libkernel/libkernel.a(int32_to_hex.o)
+ .data          0x0000000000000b0c        0x0 ../libkernel/libkernel.a(screen_get_page.o)
+ *(.rodata)
+                0x0000000000000b0c                PROVIDE (edata, .)
+                0x0000000000000b10                . = ALIGN (0x10)
+ *fill*         0x0000000000000b0c        0x4 
+
+.igot.plt       0x0000000000000b10        0x0 load address 0x0000000000010b10
+ .igot.plt      0x0000000000000b10        0x0 pmhello.o
+
+.bss            0x0000000000000b10        0x0 load address 0x0000000000010b10
+                0x0000000000000b10                bss = .
+                0x0000000000000b10                _bss = .
+                0x0000000000000b10                __bss = .
+ *(.bss)
+ .bss           0x0000000000000b10        0x0 pmhello.o
+ .bss           0x0000000000000b10        0x0 ../libkernel/obj/start.o
+ .bss           0x0000000000000b10        0x0 ../libkernel/libkernel.a(rtc_mktime.o)
+ .bss           0x0000000000000b10        0x0 ../libkernel/libkernel.a(gpf.o)
+ .bss           0x0000000000000b10        0x0 ../libkernel/libkernel.a(stacktrace.o)
+ .bss           0x0000000000000b10        0x0 ../libkernel/libkernel.a(screen_get_page.o)
+                0x0000000000000b10                PROVIDE (ebss, .)
+                0x0000000000000b10                . = ALIGN (0x10)
+                0x0000000000000b10                end = .
+                0x0000000000000b10                _end = .
+                0x0000000000000b10                __end = .
+LOAD ../libkernel/libkernel.a
+OUTPUT(pmhello.elf elf32-i386)
+
+.debug_line     0x0000000000000000      0x2d1
+ .debug_line    0x0000000000000000       0xe9 ../libkernel/obj/start.o
+ .debug_line    0x00000000000000e9       0x4a ../libkernel/libkernel.a(rtc_mktime.o)
+ .debug_line    0x0000000000000133       0x62 ../libkernel/libkernel.a(gpf.o)
+ .debug_line    0x0000000000000195       0x8c ../libkernel/libkernel.a(stacktrace.o)
+ .debug_line    0x0000000000000221        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_line    0x0000000000000221       0x51 ../libkernel/libkernel.a(int32_to_hex.o)
+ .debug_line    0x0000000000000272       0x5f ../libkernel/libkernel.a(screen_get_page.o)
+
+.debug_info     0x0000000000000000      0x319
+ .debug_info    0x0000000000000000       0x6c ../libkernel/obj/start.o
+ .debug_info    0x000000000000006c      0x13d ../libkernel/libkernel.a(rtc_mktime.o)
+ .debug_info    0x00000000000001a9       0x56 ../libkernel/libkernel.a(gpf.o)
+ .debug_info    0x00000000000001ff       0x75 ../libkernel/libkernel.a(stacktrace.o)
+ .debug_info    0x0000000000000274        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_info    0x0000000000000274       0x43 ../libkernel/libkernel.a(int32_to_hex.o)
+ .debug_info    0x00000000000002b7       0x62 ../libkernel/libkernel.a(screen_get_page.o)
+
+.debug_abbrev   0x0000000000000000      0x118
+ .debug_abbrev  0x0000000000000000       0x12 ../libkernel/obj/start.o
+ .debug_abbrev  0x0000000000000012       0xb0 ../libkernel/libkernel.a(rtc_mktime.o)
+ .debug_abbrev  0x00000000000000c2       0x14 ../libkernel/libkernel.a(gpf.o)
+ .debug_abbrev  0x00000000000000d6       0x14 ../libkernel/libkernel.a(stacktrace.o)
+ .debug_abbrev  0x00000000000000ea        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_abbrev  0x00000000000000ea       0x1a ../libkernel/libkernel.a(int32_to_hex.o)
+ .debug_abbrev  0x0000000000000104       0x14 ../libkernel/libkernel.a(screen_get_page.o)
+
+.debug_aranges  0x0000000000000000       0xc8
+ .debug_aranges
+                0x0000000000000000       0x28 ../libkernel/obj/start.o
+ .debug_aranges
+                0x0000000000000028       0x20 ../libkernel/libkernel.a(rtc_mktime.o)
+ .debug_aranges
+                0x0000000000000048       0x20 ../libkernel/libkernel.a(gpf.o)
+ .debug_aranges
+                0x0000000000000068       0x20 ../libkernel/libkernel.a(stacktrace.o)
+ .debug_aranges
+                0x0000000000000088        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_aranges
+                0x0000000000000088       0x20 ../libkernel/libkernel.a(int32_to_hex.o)
+ .debug_aranges
+                0x00000000000000a8       0x20 ../libkernel/libkernel.a(screen_get_page.o)
+
+.debug_ranges   0x0000000000000000       0x20
+ .debug_ranges  0x0000000000000000       0x20 ../libkernel/obj/start.o
+
+.debug_loc      0x0000000000000000      0x195
+ .debug_loc     0x0000000000000000      0x185 ../libkernel/libkernel.a(rtc_mktime.o)
+ .debug_loc     0x0000000000000185        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_loc     0x0000000000000185       0x10 ../libkernel/libkernel.a(int32_to_hex.o)
+
+.debug_str      0x0000000000000000      0x13c
+ .debug_str     0x0000000000000000      0x13c ../libkernel/libkernel.a(rtc_mktime.o)
+                                        0x146 (size before relaxing)
+
+.comment        0x0000000000000000       0x24
+ .comment       0x0000000000000000       0x24 ../libkernel/libkernel.a(rtc_mktime.o)
+                                         0x25 (size before relaxing)
+
+.note.GNU-stack
+                0x0000000000000000        0x0
+ .note.GNU-stack
+                0x0000000000000000        0x0 ../libkernel/libkernel.a(rtc_mktime.o)
+
+.debug_pubnames
+                0x0000000000000000       0x12
+ .debug_pubnames
+                0x0000000000000000        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_pubnames
+                0x0000000000000000       0x12 ../libkernel/libkernel.a(int32_to_hex.o)
+
+.debug_frame    0x0000000000000000        0x4
+ .debug_frame   0x0000000000000000        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_frame   0x0000000000000000        0x4 ../libkernel/libkernel.a(int32_to_hex.o)
+
+Cross Reference Table
+
+Symbol                                            File
+DBG_NUM                                           ../libkernel/libkernel.a(stacktrace.o)
+INT_NUM                                           ../libkernel/libkernel.a(stacktrace.o)
+                                                  ../libkernel/libkernel.a(gpf.o)
+REG_NUM                                           ../libkernel/libkernel.a(stacktrace.o)
+STK_NUM                                           ../libkernel/libkernel.a(stacktrace.o)
+                                                  ../libkernel/libkernel.a(gpf.o)
+TSS_NUM                                           ../libkernel/libkernel.a(stacktrace.o)
+_start                                            ../libkernel/obj/start.o
+bail_out                                          pmhello.o
+                                                  ../libkernel/libkernel.a(gpf.o)
+bss                                               ../libkernel/obj/start.o
+dbgname                                           ../libkernel/libkernel.a(stacktrace.o)
+edata                                             ../libkernel/obj/start.o
+end                                               ../libkernel/obj/start.o
+etext                                             ../libkernel/obj/start.o
+get_flags_str                                     ../libkernel/libkernel.a(stacktrace.o)
+hex_digits                                        ../libkernel/libkernel.a(hexdigits.o)
+                                                  ../libkernel/libkernel.a(int32_to_hex.o)
+                                                  pmhello.o
+int32_to_hex                                      ../libkernel/libkernel.a(int32_to_hex.o)
+                                                  ../libkernel/libkernel.a(stacktrace.o)
+intname                                           ../libkernel/libkernel.a(stacktrace.o)
+                                                  ../libkernel/libkernel.a(gpf.o)
+isrGPF                                            ../libkernel/libkernel.a(gpf.o)
+                                                  pmhello.o
+main                                              pmhello.o
+                                                  ../libkernel/obj/start.o
+month_days                                        ../libkernel/libkernel.a(rtc_mktime.o)
+pm_enter                                          ../libkernel/obj/start.o
+                                                  pmhello.o
+print_stacktrace                                  ../libkernel/libkernel.a(stacktrace.o)
+                                                  ../libkernel/libkernel.a(gpf.o)
+privCS                                            pmhello.o
+privDS                                            pmhello.o
+                                                  ../libkernel/libkernel.a(gpf.o)
+                                                  ../libkernel/obj/start.o
+privSS                                            pmhello.o
+                                                  ../libkernel/obj/start.o
+regGDT                                            pmhello.o
+                                                  ../libkernel/obj/start.o
+regIDT                                            pmhello.o
+                                                  ../libkernel/obj/start.o
+regname                                           ../libkernel/libkernel.a(stacktrace.o)
+rm_enter                                          ../libkernel/obj/start.o
+                                                  pmhello.o
+rtc_mktime                                        ../libkernel/libkernel.a(rtc_mktime.o)
+                                                  ../libkernel/obj/start.o
+screen_get_page                                   ../libkernel/libkernel.a(screen_get_page.o)
+                                                  ../libkernel/libkernel.a(stacktrace.o)
+selPM32                                           pmhello.o
+selRM16                                           pmhello.o
+selUsr                                            pmhello.o
+sel_bs                                            pmhello.o
+                                                  ../libkernel/libkernel.a(screen_get_page.o)
+sel_cs                                            pmhello.o
+sel_ds                                            pmhello.o
+sel_es                                            pmhello.o
+                                                  ../libkernel/libkernel.a(stacktrace.o)
+                                                  ../libkernel/obj/start.o
+stkname                                           ../libkernel/libkernel.a(stacktrace.o)
+                                                  ../libkernel/libkernel.a(gpf.o)
+theGDT                                            pmhello.o
+                                                  ../libkernel/libkernel.a(gpf.o)
+theIDT                                            pmhello.o
+ticks                                             ../libkernel/obj/start.o
+tssname                                           ../libkernel/libkernel.a(stacktrace.o)
+year_days                                         ../libkernel/libkernel.a(rtc_mktime.o)

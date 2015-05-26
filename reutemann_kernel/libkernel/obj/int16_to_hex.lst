@@ -1,0 +1,42 @@
+     1                                  ;-------------------------------------------------------------------
+     2                                  ; FUNCTION:   int16_to_hex
+     3                                  ;
+     4                                  ; PURPOSE:    Convert a 16-bit unsigned integer into its hexadecimal
+     5                                  ;             ASCII representation
+     6                                  ;
+     7                                  ; PARAMETERS: (via register)
+     8                                  ;             EAX - value to output as 16-bit unsigned integer
+     9                                  ;             EDI - pointer to output string
+    10                                  ;
+    11                                  ; RETURN:     EAX - pointer to the character following the last
+    12                                  ;                   character in the string
+    13                                  ;
+    14                                  ;-------------------------------------------------------------------
+    15                                  SECTION .data
+    16                                  EXTERN hex_digits
+    17                                  
+    18                                  SECTION .text
+    19                                  GLOBAL int16_to_hex
+    20                                  
+    21                                  int16_to_hex:
+    22 00000000 53                              push    ebx             ; save used registers on stack
+    23 00000001 51                              push    ecx
+    24 00000002 52                              push    edx
+    25                                  
+    26 00000003 B904000000                      mov     ecx,4           ; iterate over 4 hex digits
+    27                                  .loop:
+    28 00000008 89C3                            mov     ebx,eax
+    29 0000000A 83E30F                          and     ebx,0xf
+    30 0000000D 8A93[00000000]                  mov     dl,[hex_digits+ebx]
+    31 00000013 88540FFF                        mov     [edi+ecx-1],dl
+    32 00000017 C1E804                          shr     eax,4
+    33 0000001A 49                              dec     ecx
+    34 0000001B 75EB                            jnz     .loop
+    35                                  
+    36 0000001D 8D4704                          lea     eax,[edi+4]
+    37                                  
+    38 00000020 5A                              pop     edx             ; restore registers from stack
+    39 00000021 59                              pop     ecx
+    40 00000022 5B                              pop     ebx
+    41 00000023 C3                              ret
+    42                                  

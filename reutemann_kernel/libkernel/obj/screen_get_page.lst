@@ -1,0 +1,61 @@
+ GNU assembler version 2.24.51 (i686-linux-gnu)
+	 using BFD version (GNU Binutils for Ubuntu) 2.24.90.20141014.
+ options passed	: --32 -I../inc -g -almgns=obj/screen_get_page.lst -c 
+ input file    	: src/screen_get_page.s
+ output file   	: obj/screen_get_page.o
+ target        	: i686-pc-linux-gnu
+ time stamp    	: 2015-05-26T11:12:45.000-0700
+
+   1              	
+   2              	        .equ    CRT_PORT, 0x03D4
+   3              	        .equ    CRT_PAGE_HI, 0x0C
+   4              	        .equ    CRT_PAGE_LO, 0x0D
+   5              	
+   6              	        .section        .text
+   7              	        .type           screen_get_page, @function
+   8              	        .globl          screen_get_page
+   9              	        .align          8
+  10              	screen_get_page:
+  11 0000 C8000000 	        enter   $0, $0
+  12 0004 52       	        push    %edx
+  13              	
+  14 0005 31C0     	        xor     %eax, %eax
+  15 0007 66BAD403 	        mov     $CRT_PORT, %dx          # CRTC i/o-port
+  16 000b B00C     	        mov     $CRT_PAGE_HI, %al       # page offset HI
+  17 000d EE       	        out     %al, %dx
+  18 000e 90       	        nop
+  19 000f 90       	        nop
+  20 0010 6642     	        inc     %dx
+  21 0012 EC       	        in      %dx, %al
+  22 0013 88C4     	        mov     %al, %ah
+  23              	
+  24 0015 66BAD403 	        mov     $CRT_PORT, %dx          # CRTC i/o-port
+  25 0019 B00D     	        mov     $CRT_PAGE_LO, %al       # page offset LO
+  26 001b EE       	        out     %al, %dx
+  27 001c 90       	        nop
+  28 001d 90       	        nop
+  29 001e 6642     	        inc     %dx
+  30 0020 EC       	        in      %dx, %al
+  31 0021 C1E80B   	        shr     $11, %eax               # divide offset by 0x1000/2
+  32              	
+  33 0024 0FA0     	        pushl   %fs
+  34              	
+  35 0026 66B80000 	        mov     $sel_bs, %ax            # address rom-bios data
+  36 002a 8EE0     	        mov     %ax, %fs                #   using FS register
+  37 002c 640FB605 	        movzxb  %fs:(0x62), %eax        # get current page
+  37      62000000 
+  38              	
+  39 0034 0FA1     	        popl    %fs
+  40              	
+  41 0036 5A       	        pop     %edx
+  42 0037 C9       	        leave
+  43 0038 C3       	        ret
+  44              	
+DEFINED SYMBOLS
+src/screen_get_page.s:2      *ABS*:00000000000003d4 CRT_PORT
+src/screen_get_page.s:3      *ABS*:000000000000000c CRT_PAGE_HI
+src/screen_get_page.s:4      *ABS*:000000000000000d CRT_PAGE_LO
+src/screen_get_page.s:10     .text:0000000000000000 screen_get_page
+
+UNDEFINED SYMBOLS
+sel_bs
