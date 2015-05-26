@@ -15,15 +15,15 @@ uint32_t page_directory[1024] __attribute__((aligned(0x1000)));
 //uint32_t * stack_page_table = (uint32_t *) 0x103000;
 
 //Create Page Tables
-uint32_t kernel_page_table[1024] __attribute__((align(0x1000)));
-uint32_t programm_page_table[1024] __attribute__((align(0x1000)));
-uint32_t stack_page_table[1024] __attribute__((align(0x1000)));
+uint32_t kernel_page_table[1024] __attribute__((aligned(0x1000)));
+uint32_t programm_page_table[1024] __attribute__((aligned(0x1000)));
+uint32_t stack_page_table[1024] __attribute__((aligned(0x1000)));
 
 //General Parameters
 int startaddress = 0x200000; //Startaddress for Physical Memory
 int page_counter = 0;
 const int maxNumberOfPages = 4; //Maximum Number of Pages
-uint32_t page_bitfield[1024][32] = {0};
+uint32_t page_bitfield[1024][32];
 
 
 //Page replace parameters
@@ -136,10 +136,6 @@ int setPresentBit(int pde_offset, int pte_offset, int bool){
         }else{
             page_bitfield[pde_offset][index] |= (PRESENT_BIT << (pte_offset%32));
         }
-       // printf("PDE %d\t\t",pde_offset);
-        //printf("PTE %d\t\t",index);
-        //printf("Val %x\t\t",page_bitfield[pde_offset][index]);
-
         return 1;
     }
 }
@@ -183,6 +179,6 @@ uint32_t* init_paging() {
     *(page_directory + OFFSET_PROGRAMM_PT) = (uint32_t)programm_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_STACK_PT) = (uint32_t)stack_page_table | PRESENT_BIT | RW_BIT;
    
-    printf("Address of page Directory %p\n",page_directory);
+    //printf("Address of page Directory %p\n",page_directory);
     return page_directory;
 }

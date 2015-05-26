@@ -97,10 +97,12 @@ samples:.long   0x00010000, 0x000100ff, 0x00020000, 0x00020abc
         .type   main, @function
         .global main
         .extern pfhandler
+	.extern init_paging
         .extern int_to_hex
         .extern screen_write
         .extern screen_sel_page
 main:
+	call	init_paging
         enter   $0, $0
         pushal
 

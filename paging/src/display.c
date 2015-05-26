@@ -105,42 +105,25 @@ int isMemoryAddress(int memoryAddress){
 void testReplacePage(){
     printf("Start of testing replace pages");
     init_paging();
+    pageFault(0x00010000);
+    pageFault(0x00010000);
+    pageFault(0x00010000);
+    pageFault(0x000100FF);
+    pageFault(0x00020000);
+    pageFault(0x00020ABC);
+    pageFault(0x000B8000);
+    pageFault(0x000110FF);
     pageFault(0x08048000);
-    pageFault(0x08049000);
-    pageFault(0x08050000);
-    pageFault(0x08051000);
-
-    printf("Replace\n");
-    pageFault(0x08052000);
-    printf("Replace\n");
-    pageFault(0x08053000);
-    pageFault(0x08052000);
-    pageFault(0x08050000);
-    printf("Replace\n");
-    pageFault(0x08049000);
-    pageFault(0x08049000);
-    pageFault(0x08053000);
-    printf("Replace\n");
-    pageFault(0x08060000);
-    printf("Replace\n");
-    pageFault(0x08061000);
-    printf("Replace\n");
-    pageFault(0x08062000);
-    pageFault(0x08063000);
-    pageFault(0x08064000);
-    
-    printf("Zweiter Test\n");
-    
-    pageFault(0x08055000);
-    pageFault(0x08054000);
-    pageFault(0x08053000);
-    pageFault(0x08052000);
-    pageFault(0x08051000);
-    pageFault(0x08050000);
-    pageFault(0x08049000);
     pageFault(0x08048000);
-    
-    
+    pageFault(0xFFFFFFFC);
+    pageFault(0x08000000);
+    pageFault(0x08048123);
+    pageFault(0x08049321);
+    pageFault(0x08051C00);
+    pageFault(0x08020ABC);
+    pageFault(0x60000000);
+    pageFault(0x08048FFF);
+    pageFault(0x08049004);
 }
 
 void testIsPresent(){

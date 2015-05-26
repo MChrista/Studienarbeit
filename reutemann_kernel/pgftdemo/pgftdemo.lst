@@ -4,7 +4,7 @@
  input file    	: pgftdemo.s
  output file   	: pgftdemo.o
  target        	: i686-pc-linux-gnu
- time stamp    	: 2015-05-26T11:12:45.000-0700
+ time stamp    	: 2015-05-26T13:27:22.000-0700
 
    1              	#-----------------------------------------------------------------
    2              	# pgftdemo.s
@@ -217,120 +217,123 @@
   97              	        .type   main, @function
   98              	        .global main
   99              	        .extern pfhandler
- 100              	        .extern int_to_hex
- 101              	        .extern screen_write
- 102              	        .extern screen_sel_page
- 103              	main:
- 104 0000 C8000000 	        enter   $0, $0
- 105 0004 60       	        pushal
- 106              	
- 107              	        #----------------------------------------------------------
- 108              	        # Segment register usage (provided by start.o):
- 109              	        #   CS - Code Segment
- 110              	        #   DS - Data Segment
- 111              	        #   SS - Stack Segment
- 112              	        #   ES - CGA Video Memory
- 113              	        #----------------------------------------------------------
- 114              	
- 115 0005 31C0     	        xor     %eax, %eax
- 116 0007 E8FCFFFF 	        call    screen_sel_page
- 116      FF
- 117              	        #----------------------------------------------------------
- 118              	        # read address samples from array
- 119              	        # end of array is indicated by zero address
- 120              	        #----------------------------------------------------------
- 121 000c 31C9     	        xor     %ecx, %ecx
- 122              	read_samples:
- 123 000e 8B048DA5 	        mov     samples(,%ecx,4), %eax
- 123      080000
- 124 0015 85C0     	        test    %eax, %eax
- 125 0017 0F849400 	        jz      read_done
- 125      0000
- 126 001d 51       	        pushl   %ecx
- 127              	
- 128 001e 50       	        pushl   %eax
- 129 001f E8FCFFFF 	        call    pfhandler
- 129      FF
- 130 0024 83C404   	        add     $4, %esp
- 131 0027 89C6     	        mov     %eax, %esi
- 132              	
- 133              	        #----------------------------------------------------------
- 134              	        # Convert 32-bit integers to hex strings
- 135              	        # eax - value to output as 32-bit unsigned integer
- 136              	        # edi - pointer to output string
- 137              	        # ecx - number of output digits
- 138              	        #----------------------------------------------------------
- 139 0029 8B06     	        mov     (%esi), %eax      # faulting address
- 140 002b 8D3D7608 	        lea     pgftmsg, %edi
- 140      0000
- 141 0031 B9080000 	        mov     $8, %ecx
- 141      00
- 142 0036 E8FCFFFF 	        call    int_to_hex
- 142      FF
- 143              	
- 144 003b 8B4604   	        mov     4(%esi), %eax     # PDE
- 145 003e 8D3D8308 	        lea     pgftmsg+13, %edi
- 145      0000
- 146 0044 B9030000 	        mov     $3, %ecx
- 146      00
- 147 0049 E8FCFFFF 	        call    int_to_hex
- 147      FF
- 148              	
- 149 004e 8B4608   	        mov     8(%esi), %eax     # PTE
- 150 0051 8D3D8B08 	        lea     pgftmsg+21, %edi
- 150      0000
- 151 0057 B9030000 	        mov     $3, %ecx
- 151      00
- 152 005c E8FCFFFF 	        call    int_to_hex
- 152      FF
- 153              	
- 154 0061 8B460C   	        mov     12(%esi), %eax    # address offset
- 155 0064 8D3D9308 	        lea     pgftmsg+29, %edi
- 155      0000
- 156 006a B9030000 	        mov     $3, %ecx
- 156      00
- 157 006f E8FCFFFF 	        call    int_to_hex
- 157      FF
- 158              	
- 159 0074 8B4610   	        mov     16(%esi), %eax    # physical address
- 160 0077 8D3D9708 	        lea     pgftmsg+33, %edi
- 160      0000
- 161 007d B9080000 	        mov     $8, %ecx
- 161      00
- 162 0082 E8FCFFFF 	        call    int_to_hex
- 162      FF
- 163              	
- 164 0087 8B4614   	        mov     20(%esi), %eax    # flags
- 165 008a 8D3DA008 	        lea     pgftmsg+42, %edi
- 165      0000
- 166 0090 B9040000 	        mov     $4, %ecx
- 166      00
- 167 0095 E8FCFFFF 	        call    int_to_hex
- 167      FF
- 168              	
- 169 009a 8D357608 	        lea     pgftmsg, %esi           # message-offset into ESI
- 169      0000
- 170 00a0 B92F0000 	        mov     $pgftmsg_len, %ecx      # message-length into ECX
- 170      00
- 171 00a5 E8FCFFFF 	        call    screen_write
- 171      FF
- 172 00aa 59       	        popl    %ecx
- 173 00ab 41       	        inc     %ecx
- 174 00ac E95DFFFF 	        jmp     read_samples
- 174      FF
- 175              	read_done:
- 176              	
- 177 00b1 61       	        popal
- 178 00b2 C9       	        leave
- 179 00b3 C3       	        ret
- 180              	#------------------------------------------------------------------
- 181              	        .type   bail_out, @function
- 182              	        .global bail_out
- 183              	bail_out:
- 184 00b4 FA       	        cli
- 185 00b5 F4       	        hlt
- 186              	#------------------------------------------------------------------
- 187              	        .end
+ 100              		.extern init_paging
+ 101              	        .extern int_to_hex
+ 102              	        .extern screen_write
+ 103              	        .extern screen_sel_page
+ 104              	main:
+ 105 0000 E8FCFFFF 		call	init_paging
+ 105      FF
+ 106 0005 C8000000 	        enter   $0, $0
+ 107 0009 60       	        pushal
+ 108              	
+ 109              	        #----------------------------------------------------------
+ 110              	        # Segment register usage (provided by start.o):
+ 111              	        #   CS - Code Segment
+ 112              	        #   DS - Data Segment
+ 113              	        #   SS - Stack Segment
+ 114              	        #   ES - CGA Video Memory
+ 115              	        #----------------------------------------------------------
+ 116              	
+ 117 000a 31C0     	        xor     %eax, %eax
+ 118 000c E8FCFFFF 	        call    screen_sel_page
+ 118      FF
+ 119              	        #----------------------------------------------------------
+ 120              	        # read address samples from array
+ 121              	        # end of array is indicated by zero address
+ 122              	        #----------------------------------------------------------
+ 123 0011 31C9     	        xor     %ecx, %ecx
+ 124              	read_samples:
+ 125 0013 8B048DA5 	        mov     samples(,%ecx,4), %eax
+ 125      080000
+ 126 001a 85C0     	        test    %eax, %eax
+ 127 001c 0F849400 	        jz      read_done
+ 127      0000
+ 128 0022 51       	        pushl   %ecx
+ 129              	
+ 130 0023 50       	        pushl   %eax
+ 131 0024 E8FCFFFF 	        call    pfhandler
+ 131      FF
+ 132 0029 83C404   	        add     $4, %esp
+ 133 002c 89C6     	        mov     %eax, %esi
+ 134              	
+ 135              	        #----------------------------------------------------------
+ 136              	        # Convert 32-bit integers to hex strings
+ 137              	        # eax - value to output as 32-bit unsigned integer
+ 138              	        # edi - pointer to output string
+ 139              	        # ecx - number of output digits
+ 140              	        #----------------------------------------------------------
+ 141 002e 8B06     	        mov     (%esi), %eax      # faulting address
+ 142 0030 8D3D7608 	        lea     pgftmsg, %edi
+ 142      0000
+ 143 0036 B9080000 	        mov     $8, %ecx
+ 143      00
+ 144 003b E8FCFFFF 	        call    int_to_hex
+ 144      FF
+ 145              	
+ 146 0040 8B4604   	        mov     4(%esi), %eax     # PDE
+ 147 0043 8D3D8308 	        lea     pgftmsg+13, %edi
+ 147      0000
+ 148 0049 B9030000 	        mov     $3, %ecx
+ 148      00
+ 149 004e E8FCFFFF 	        call    int_to_hex
+ 149      FF
+ 150              	
+ 151 0053 8B4608   	        mov     8(%esi), %eax     # PTE
+ 152 0056 8D3D8B08 	        lea     pgftmsg+21, %edi
+ 152      0000
+ 153 005c B9030000 	        mov     $3, %ecx
+ 153      00
+ 154 0061 E8FCFFFF 	        call    int_to_hex
+ 154      FF
+ 155              	
+ 156 0066 8B460C   	        mov     12(%esi), %eax    # address offset
+ 157 0069 8D3D9308 	        lea     pgftmsg+29, %edi
+ 157      0000
+ 158 006f B9030000 	        mov     $3, %ecx
+ 158      00
+ 159 0074 E8FCFFFF 	        call    int_to_hex
+ 159      FF
+ 160              	
+ 161 0079 8B4610   	        mov     16(%esi), %eax    # physical address
+ 162 007c 8D3D9708 	        lea     pgftmsg+33, %edi
+ 162      0000
+ 163 0082 B9080000 	        mov     $8, %ecx
+ 163      00
+ 164 0087 E8FCFFFF 	        call    int_to_hex
+ 164      FF
+ 165              	
+ 166 008c 8B4614   	        mov     20(%esi), %eax    # flags
+ 167 008f 8D3DA008 	        lea     pgftmsg+42, %edi
+ 167      0000
+ 168 0095 B9040000 	        mov     $4, %ecx
+ 168      00
+ 169 009a E8FCFFFF 	        call    int_to_hex
+ 169      FF
+ 170              	
+ 171 009f 8D357608 	        lea     pgftmsg, %esi           # message-offset into ESI
+ 171      0000
+ 172 00a5 B92F0000 	        mov     $pgftmsg_len, %ecx      # message-length into ECX
+ 172      00
+ 173 00aa E8FCFFFF 	        call    screen_write
+ 173      FF
+ 174 00af 59       	        popl    %ecx
+ 175 00b0 41       	        inc     %ecx
+ 176 00b1 E95DFFFF 	        jmp     read_samples
+ 176      FF
+ 177              	read_done:
+ 178              	
+ 179 00b6 61       	        popal
+ 180 00b7 C9       	        leave
+ 181 00b8 C3       	        ret
+ 182              	#------------------------------------------------------------------
+ 183              	        .type   bail_out, @function
+ 184              	        .global bail_out
+ 185              	bail_out:
+ 186 00b9 FA       	        cli
+ 187 00ba F4       	        hlt
+ 188              	#------------------------------------------------------------------
+ 189              	        .end
 DEFINED SYMBOLS
                             *ABS*:0000000000000008 progname_size
           pgftdemo.s:12     .signature:0000000000000004 progname
@@ -341,7 +344,7 @@ DEFINED SYMBOLS
    ../inc/comgdt.inc:14     *ABS*:0000000000000018 selRM16
                             *ABS*:0000000000000028 sel_cs
    ../inc/comgdt.inc:19     *ABS*:0000000000000023 selUsr
-          pgftdemo.s:183    .text:00000000000000b4 bail_out
+          pgftdemo.s:185    .text:00000000000000b9 bail_out
    ../inc/comgdt.inc:31     *ABS*:0000000000000030 sel_ds
    ../inc/comgdt.inc:38     *ABS*:0000000000000038 sel_es
    ../inc/comgdt.inc:44     *ABS*:0000000000000040 sel_bs
@@ -355,14 +358,15 @@ DEFINED SYMBOLS
           pgftdemo.s:73     .data:0000000000000876 pgftmsg
           pgftdemo.s:79     *ABS*:000000000000002f pgftmsg_len
           pgftdemo.s:84     .data:00000000000008a5 samples
-          pgftdemo.s:103    .text:0000000000000000 main
-          pgftdemo.s:122    .text:000000000000000e read_samples
-          pgftdemo.s:175    .text:00000000000000b1 read_done
+          pgftdemo.s:104    .text:0000000000000000 main
+          pgftdemo.s:124    .text:0000000000000013 read_samples
+          pgftdemo.s:177    .text:00000000000000b6 read_done
 
 UNDEFINED SYMBOLS
 pm_enter
 rm_enter
 isrGPF
+init_paging
 screen_sel_page
 pfhandler
 int_to_hex

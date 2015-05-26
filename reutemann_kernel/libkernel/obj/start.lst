@@ -4,7 +4,7 @@
  input file    	: src/start.s
  output file   	: obj/start.o
  target        	: i686-pc-linux-gnu
- time stamp    	: 2015-05-26T12:17:32.000-0700
+ time stamp    	: 2015-05-26T12:53:40.000-0700
 
    1              	#-----------------------------------------------------------------
    2              	# start.s
