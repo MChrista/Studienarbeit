@@ -8,7 +8,6 @@
 #define OFFSET_PROGRAMM_PT 32
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
-#define IS_PRESENT(address) ((address & 0x1) == (1) ? (0) : (1))
 
 struct page_fault_result;
 

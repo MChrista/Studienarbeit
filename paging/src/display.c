@@ -109,15 +109,36 @@ void testReplacePage(){
     pageFault(0x08049000);
     pageFault(0x08050000);
     pageFault(0x08051000);
-    printf("Four Pages are mapped\n");
+
+    printf("Replace\n");
     pageFault(0x08052000);
+    printf("Replace\n");
     pageFault(0x08053000);
     pageFault(0x08052000);
     pageFault(0x08050000);
-    printf("Next address is to replace\n");
+    printf("Replace\n");
     pageFault(0x08049000);
     pageFault(0x08049000);
     pageFault(0x08053000);
+    printf("Replace\n");
+    pageFault(0x08060000);
+    printf("Replace\n");
+    pageFault(0x08061000);
+    printf("Replace\n");
+    pageFault(0x08062000);
+    pageFault(0x08063000);
+    pageFault(0x08064000);
+    
+    printf("Zweiter Test\n");
+    
+    pageFault(0x08055000);
+    pageFault(0x08054000);
+    pageFault(0x08053000);
+    pageFault(0x08052000);
+    pageFault(0x08051000);
+    pageFault(0x08050000);
+    pageFault(0x08049000);
+    pageFault(0x08048000);
     
     
 }

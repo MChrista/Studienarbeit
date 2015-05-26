@@ -61,22 +61,19 @@ struct page_fault_result * pageFault( int virtualAddr){
             printf("Makro sagt nicht present\n");
         }
 */
-        if((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT){ //if present Bit is set
-            printf("Debug step\n");
+        if((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT){ //if present Bit is not set
             if(page_counter < maxNumberOfPages){
-                printf("Maximum number of pages has not been reached\n");
                  //=  *(page_table + page_table_offset) & 0xFFFFF000;
           
                 uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
                 *(page_table + page_table_offset) = next_address;
                 setPresentBit(page_dir_offset,page_table_offset,1);
-     
+                printf("PTE: %i PDE: %i Physical Address of Page: %x\n\n",page_dir_offset,page_table_offset, next_address);
                 ret_info.physical_address = next_address & 0xFFFFF000;
    // Get next free Page and return new virtual Adress
             }else{
-                printf("The Maximum Number of Pages have been reached already. This Page can't be reserved\n"); 
+                printf("Replace Page\n"); 
                 //Get physical address of page you want to replace
-                printf("Start PTE offset: %d\n", replace_pte_offset);
                 do{
                     //printf(".\n");
                     replace_pte_offset++;
@@ -92,14 +89,18 @@ struct page_fault_result * pageFault( int virtualAddr){
                     }
                 }while(!isPresentBit(replace_pde_offset,replace_pte_offset));
                 
+                
                 printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
                 //Get page table, in which is the page you want to replace and get the physical address of this page
                 uint32_t *temp_page_table;
                 temp_page_table = (uint32_t *)(page_directory[replace_pde_offset] & 0xFFFFF000);
                 uint32_t replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
                 
+                printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
+                printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
                 //Remove old page
                 *(temp_page_table + replace_pte_offset) &= 0x0;
+                setPresentBit(replace_pde_offset,replace_pte_offset,0);
                 
                 /*Map new page
                  * Page Table is already present
@@ -109,9 +110,12 @@ struct page_fault_result * pageFault( int virtualAddr){
                 
                 //Now set Present Bit in bitmap matrix
                 setPresentBit(page_dir_offset,page_table_offset,1);
-                
+                printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
+                printf("Check Bitfield Offsets: %i\n\n", isPresentBit(page_dir_offset,page_table_offset));
                 
             }
+        }else{
+            printf("There is no Page Fault\n\n");
         }
         ret_info.flags = *(page_table + page_table_offset) && 0x00000FFF;
     }else{
