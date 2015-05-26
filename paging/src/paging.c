@@ -26,17 +26,32 @@ const int maxNumberOfPages = 4; //Maximum Number of Pages
 uint32_t page_bitfield[1024][32] = {0};
 
 
-//Page replace parameters 
+//Page replace parameters
 int replace_pde_offset = 0;
 int replace_pte_offset = 512;
 
+struct page_fault_result {
+  int fault_address;
+  int pde;
+  int pte;
+  int offset;
+  int physical_address;
+  int flags;  
+};
+struct page_fault_result ret_info;
 
-void pageFault( int virtualAddr){
+struct page_fault_result * pageFault( int virtualAddr){    
+    
 #if DEBUG >= 1
     printf("\nPage Fault at: %x\n", virtualAddr );
 #endif
     int page_dir_offset = (virtualAddr >> 22) & 0x3FF;
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
+    
+    ret_info.pde = page_dir_offset;
+    ret_info.pte = page_table_offset;
+    ret_info.offset = virtualAddr & 0x00000FFF;
+    ret_info.fault_address = virtualAddr;
     
 #if DEBUG >= 1
     printf("Page directory Offset is: %i\n", page_dir_offset);
@@ -64,8 +79,9 @@ void pageFault( int virtualAddr){
 #if DEBUG >= 1
             printf("Page is already present at physical address %x\n", *(page_table + page_table_offset) & 0xFFFFF000);
 #endif
-        }else{
             if(page_counter < maxNumberOfPages){
+            ret_info.physical_address =  *(page_table + page_table_offset) & 0xFFFFF000;
+        
                 uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
                 *(page_table + page_table_offset) = next_address;
 #if DEBUG >= 3
@@ -75,6 +91,7 @@ void pageFault( int virtualAddr){
 #if DEBUG >= 1      
           printf("New Page were reserved at physical address %x\n", next_address & 0xFFFFF000);
 #endif             
+            ret_info.physical_address = next_address & 0xFFFFF000;
    // Get next free Page and return new virtual Adress
             }else{
 #if DEBUG >= 1
@@ -113,13 +130,20 @@ void pageFault( int virtualAddr){
                  * Page Table is already present
                  */
                 *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
+                ret_info.physical_address = replace_phy_address && 0xFFFFF000;
+                
                 //Now set Present Bit in bitmap matrix
                 setPresentBit(page_dir_offset,page_table_offset,1);
+                
+                
             }
         }
+        ret_info.flags = *(page_table + page_table_offset) && 0x00000FFF;
     }else{
         printf("Segmentation Fault. Page Table is not present.\n");
+        ret_info.physical_address = -1;
     }
+    return &ret_info;
 }
 
 int setPresentBit(int pde_offset, int pte_offset, int bool){

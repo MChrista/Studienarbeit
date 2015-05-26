@@ -3,11 +3,23 @@
 #include "paging.h"
 #include <math.h>
 
+struct page_fault_result {
+  int fault_address;
+  int pde;
+  int pte;
+  int offset;
+  int physical_address;
+  int flags;  
+};
+
 void testPaging( int virtualAddr, uint32_t * page_directory ){
-    	int page_dir_offset = (virtualAddr & 0xFFC00000) >> 22;
+    
+    struct page_fault_result * pf_result;
+
+  	int page_dir_offset = (virtualAddr & 0xFFC00000) >> 22;
 	int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
 
-    	printf("0x%08X", virtualAddr );
+    	printf("[PFOUT] 0x%08X", virtualAddr );
     	printf("\t0x%03X",page_dir_offset );
 	printf("\t0x%03X", page_table_offset);
 	printf("\t0x%03X", virtualAddr &  0xFFF);
@@ -15,17 +27,25 @@ void testPaging( int virtualAddr, uint32_t * page_directory ){
 	if( (page_directory[page_dir_offset] & PRESENT_BIT)){ //if table present Bit is set
         	uint32_t *page_table;
         	page_table = (uint32_t *)(page_directory[page_dir_offset] & 0xFFFFF000);
-        	if((*(page_table + page_table_offset) & PRESENT_BIT)){ //if page present Bit is set
+       	if((*(page_table + page_table_offset) & PRESENT_BIT)){ //if page present Bit is set
 			printf("\t");        
 		}else{
-            		printf("\tFPTE");
-            		pageFault( virtualAddr );
-        	}
+        	printf("\tFPTE");
+            pf_result = pageFault( virtualAddr );
+        }
 		printf("\t0x%08X\n",*(page_table + page_table_offset));
 	
-    	}else{
-        	printf("\tFPDE\n");
-    	}
+        printf("[PFRES] 0x%08X\t0x%03X\t0x%03X\t0x%03X\t\t0x%08X\t%03X\n",
+            pf_result->fault_address,
+            pf_result->pde,
+            pf_result->pte,
+            pf_result->offset,
+            pf_result->physical_address,
+            pf_result->flags        
+        );
+    }else{
+       	printf("\tFPDE\n");
+    }
 }
 
 void testBitfield(){
@@ -76,6 +96,7 @@ void testBitfield(){
 
 int main( int argc, char** argv )
 {	
+    printf("Test: starting main");
 	uint32_t * pageDir = init_paging();
 	if (argc > 1){
 		FILE * f;
@@ -85,7 +106,7 @@ int main( int argc, char** argv )
 			exit(1);
 		} 
 		int testAddr;
-		printf("\nAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
+		printf("\n        Address\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
 		while (fscanf(f, "%08X", &testAddr) != EOF) {
 			testPaging(testAddr, pageDir);
 		}
