@@ -67,7 +67,6 @@ pfhandler(unsigned long ft_addr)
             }else{
                 //Get physical address of page you want to replace
                 do{
-                    //printf(".\n");
                     replace_pte_offset++;
                     if(replace_pte_offset > 1023){
                         if(replace_pde_offset==1023){

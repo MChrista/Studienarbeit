@@ -70,6 +70,7 @@ struct page_fault_result * pageFault( int virtualAddr){
                 setPresentBit(page_dir_offset,page_table_offset,1);
                 //printf("PTE: %i PDE: %i Physical Address of Page: %x\n\n",page_dir_offset,page_table_offset, next_address);
                 ret_info.physical_address = next_address & 0xFFFFF000;
+                ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
    // Get next free Page and return new virtual Adress
             }else{
                 //printf("Replace Page\n"); 
@@ -107,7 +108,7 @@ struct page_fault_result * pageFault( int virtualAddr){
                  */
                 *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
                 ret_info.physical_address = replace_phy_address & 0xFFFFF000;
-                
+                ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
                 //Now set Present Bit in bitmap matrix
                 setPresentBit(page_dir_offset,page_table_offset,1);
                 //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));

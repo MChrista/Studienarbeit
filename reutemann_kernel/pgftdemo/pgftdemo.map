@@ -215,21 +215,21 @@ LOAD pfhandler.o
 LOAD ../libkernel/libkernel.a
 OUTPUT(pgftdemo.elf elf32-i386)
 
-.debug_info     0x0000000000000000      0x8a0
+.debug_info     0x0000000000000000      0x970
  .debug_info    0x0000000000000000      0x386 pfhandler.o
- .debug_info    0x0000000000000386       0x5c ../libkernel/obj/start.o
- .debug_info    0x00000000000003e2      0x13d ../libkernel/libkernel.a(rtc_mktime.o)
- .debug_info    0x000000000000051f       0x56 ../libkernel/libkernel.a(gpf.o)
- .debug_info    0x0000000000000575       0x62 ../libkernel/libkernel.a(screen_sel_page.o)
- .debug_info    0x00000000000005d7       0x5f ../libkernel/libkernel.a(screen_write.o)
- .debug_info    0x0000000000000636       0x5d ../libkernel/libkernel.a(stacktrace.o)
- .debug_info    0x0000000000000693       0x43 ../libkernel/libkernel.a(int32_to_hex.o)
- .debug_info    0x00000000000006d6       0x62 ../libkernel/libkernel.a(screen_get_page.o)
- .debug_info    0x0000000000000738       0x41 ../libkernel/libkernel.a(int_to_hex.o)
- .debug_info    0x0000000000000779       0x61 ../libkernel/libkernel.a(screen_get_pos.o)
- .debug_info    0x00000000000007da       0x62 ../libkernel/libkernel.a(screen_scrollup.o)
- .debug_info    0x000000000000083c       0x64 ../libkernel/libkernel.a(screen_set_cursor.o)
- .debug_info    0x00000000000008a0        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_info    0x0000000000000386       0x6c ../libkernel/obj/start.o
+ .debug_info    0x00000000000003f2      0x13d ../libkernel/libkernel.a(rtc_mktime.o)
+ .debug_info    0x000000000000052f       0x6e ../libkernel/libkernel.a(gpf.o)
+ .debug_info    0x000000000000059d       0x7a ../libkernel/libkernel.a(screen_sel_page.o)
+ .debug_info    0x0000000000000617       0x77 ../libkernel/libkernel.a(screen_write.o)
+ .debug_info    0x000000000000068e       0x75 ../libkernel/libkernel.a(stacktrace.o)
+ .debug_info    0x0000000000000703       0x43 ../libkernel/libkernel.a(int32_to_hex.o)
+ .debug_info    0x0000000000000746       0x7a ../libkernel/libkernel.a(screen_get_page.o)
+ .debug_info    0x00000000000007c0       0x41 ../libkernel/libkernel.a(int_to_hex.o)
+ .debug_info    0x0000000000000801       0x79 ../libkernel/libkernel.a(screen_get_pos.o)
+ .debug_info    0x000000000000087a       0x7a ../libkernel/libkernel.a(screen_scrollup.o)
+ .debug_info    0x00000000000008f4       0x7c ../libkernel/libkernel.a(screen_set_cursor.o)
+ .debug_info    0x0000000000000970        0x0 ../libkernel/libkernel.a(hexdigits.o)
 
 .debug_abbrev   0x0000000000000000      0x2ec
  .debug_abbrev  0x0000000000000000      0x156 pfhandler.o

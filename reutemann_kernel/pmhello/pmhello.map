@@ -152,14 +152,14 @@ OUTPUT(pmhello.elf elf32-i386)
  .debug_line    0x0000000000000221       0x51 ../libkernel/libkernel.a(int32_to_hex.o)
  .debug_line    0x0000000000000272       0x5f ../libkernel/libkernel.a(screen_get_page.o)
 
-.debug_info     0x0000000000000000      0x2f1
- .debug_info    0x0000000000000000       0x5c ../libkernel/obj/start.o
- .debug_info    0x000000000000005c      0x13d ../libkernel/libkernel.a(rtc_mktime.o)
- .debug_info    0x0000000000000199       0x56 ../libkernel/libkernel.a(gpf.o)
- .debug_info    0x00000000000001ef       0x5d ../libkernel/libkernel.a(stacktrace.o)
- .debug_info    0x000000000000024c        0x0 ../libkernel/libkernel.a(hexdigits.o)
- .debug_info    0x000000000000024c       0x43 ../libkernel/libkernel.a(int32_to_hex.o)
- .debug_info    0x000000000000028f       0x62 ../libkernel/libkernel.a(screen_get_page.o)
+.debug_info     0x0000000000000000      0x349
+ .debug_info    0x0000000000000000       0x6c ../libkernel/obj/start.o
+ .debug_info    0x000000000000006c      0x13d ../libkernel/libkernel.a(rtc_mktime.o)
+ .debug_info    0x00000000000001a9       0x6e ../libkernel/libkernel.a(gpf.o)
+ .debug_info    0x0000000000000217       0x75 ../libkernel/libkernel.a(stacktrace.o)
+ .debug_info    0x000000000000028c        0x0 ../libkernel/libkernel.a(hexdigits.o)
+ .debug_info    0x000000000000028c       0x43 ../libkernel/libkernel.a(int32_to_hex.o)
+ .debug_info    0x00000000000002cf       0x7a ../libkernel/libkernel.a(screen_get_page.o)
 
 .debug_abbrev   0x0000000000000000      0x118
  .debug_abbrev  0x0000000000000000       0x12 ../libkernel/obj/start.o

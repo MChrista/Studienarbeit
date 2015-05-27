@@ -2,6 +2,8 @@
 #include <inttypes.h>
 #include "paging.h"
 #include <math.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 struct page_fault_result {
     int fault_address;
