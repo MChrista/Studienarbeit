@@ -49,25 +49,20 @@ pfhandler(unsigned long ft_addr)
     pg_struct.pde     = page_dir_offset;
     pg_struct.pte     = page_table_offset;
     pg_struct.off     = ft_addr & 0x00000FFF;
+    
+    
     if( (page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT ){ //if present Bit is set
 
         unsigned long *page_table;
         page_table = (unsigned long *)(page_directory[page_dir_offset] & 0xFFFFF000);
-/*
-        if(IS_PRESENT(*(page_table + page_table_offset) == 0)){
-            printf("Makro sagt present\n");
-        }else{
-            printf("Makro sagt nicht present\n");
-        }
-*/
+
         if((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT){ //if present Bit is not set
-            if(page_counter < maxNumberOfPages){
-                 //=  *(page_table + page_table_offset) & 0xFFFFF000;
-          
+            if(page_counter < maxNumberOfPages){          
                 unsigned long next_address = (unsigned long)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
                 *(page_table + page_table_offset) = next_address;
                 setPresentBit(page_dir_offset,page_table_offset,1);
-                pg_struct.ph_addr = next_address & 0xFFFFF000;
+                pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
+                pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
    // Get next free Page and return new virtual Adress
             }else{
                 //Get physical address of page you want to replace
@@ -99,16 +94,20 @@ pfhandler(unsigned long ft_addr)
                  * Page Table is already present
                  */
                 *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
-                pg_struct.ph_addr = replace_phy_address && 0xFFFFF000;
-                
+                pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
+                pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
                 //Now set Present Bit in bitmap matrix
                 setPresentBit(page_dir_offset,page_table_offset,1);
                 
             }
+        }else{
+            //printf("There is no Page Fault\n\n");
+            pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
+            pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
         }
-        pg_struct.flags = *(page_table + page_table_offset) && 0x00000FFF;
+        
     }else{
-        pg_struct.ph_addr = -1;
+        pg_struct.ph_addr = 0xFFFFFFFF;
         pg_struct.flags = 0x0;
     }
     return &pg_struct;

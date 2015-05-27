@@ -68,11 +68,11 @@ struct page_fault_result * pageFault( int virtualAddr){
                 uint32_t next_address = (uint32_t)(startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
                 *(page_table + page_table_offset) = next_address;
                 setPresentBit(page_dir_offset,page_table_offset,1);
-                printf("PTE: %i PDE: %i Physical Address of Page: %x\n\n",page_dir_offset,page_table_offset, next_address);
+                //printf("PTE: %i PDE: %i Physical Address of Page: %x\n\n",page_dir_offset,page_table_offset, next_address);
                 ret_info.physical_address = next_address & 0xFFFFF000;
    // Get next free Page and return new virtual Adress
             }else{
-                printf("Replace Page\n"); 
+                //printf("Replace Page\n"); 
                 //Get physical address of page you want to replace
                 do{
                     //printf(".\n");
@@ -90,14 +90,14 @@ struct page_fault_result * pageFault( int virtualAddr){
                 }while(!isPresentBit(replace_pde_offset,replace_pte_offset));
                 
                 
-                printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
+                //printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
                 //Get page table, in which is the page you want to replace and get the physical address of this page
                 uint32_t *temp_page_table;
                 temp_page_table = (uint32_t *)(page_directory[replace_pde_offset] & 0xFFFFF000);
                 uint32_t replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
                 
-                printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
-                printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
+                //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
+                //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
                 //Remove old page
                 *(temp_page_table + replace_pte_offset) &= 0x0;
                 setPresentBit(replace_pde_offset,replace_pte_offset,0);
@@ -106,28 +106,31 @@ struct page_fault_result * pageFault( int virtualAddr){
                  * Page Table is already present
                  */
                 *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
-                ret_info.physical_address = replace_phy_address && 0xFFFFF000;
+                ret_info.physical_address = replace_phy_address & 0xFFFFF000;
                 
                 //Now set Present Bit in bitmap matrix
                 setPresentBit(page_dir_offset,page_table_offset,1);
-                printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
-                printf("Check Bitfield Offsets: %i\n\n", isPresentBit(page_dir_offset,page_table_offset));
+                //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
+                //printf("Check Bitfield Offsets: %i\n\n", isPresentBit(page_dir_offset,page_table_offset));
                 
             }
         }else{
-            printf("There is no Page Fault\n\n");
+            //printf("There is no Page Fault\n\n");
+            ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
+            ret_info.physical_address = *(page_table + page_table_offset) & 0xFFFFF000;
         }
-        ret_info.flags = *(page_table + page_table_offset) && 0x00000FFF;
+        
     }else{
-        printf("Segmentation Fault. Page Table is not present.\n");
-        ret_info.physical_address = -1;
+        //printf("Segmentation Fault. Page Table is not present.\n");
+        ret_info.physical_address = 0xFFFFFFFF;
+        ret_info.flags = 0x0;
     }
     return &ret_info;
 }
 
 int setPresentBit(int pde_offset, int pte_offset, int bool){
     if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
-        printf("Offset is no in range\n");
+        //printf("Offset is no in range\n");
         return 0;     
     }else{
         int index = pte_offset/32;
@@ -142,7 +145,7 @@ int setPresentBit(int pde_offset, int pte_offset, int bool){
 
 int isPresentBit(int pde_offset, int pte_offset){
     if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
-        printf("Offset is no in range\n");
+        //printf("Offset is no in range\n");
         return 0;     
     }else{
         int index = pte_offset/32;
