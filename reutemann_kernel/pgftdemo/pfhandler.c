@@ -6,6 +6,13 @@
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
 
+#ifdef __DHBW_KERNEL__
+// Linear address of data segment, defined in ldscript
+// use only in Kernel context with x86 segmentation
+// being enabled
+extern unsigned long LD_DATA_START;
+#endif
+
 
 /*
  * Declaration of Page Directory and Page tables
@@ -160,7 +167,13 @@ unsigned long* init_paging() {
     *(page_directory + OFFSET_KERNEL_PT) = (unsigned long)kernel_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_PROGRAMM_PT) = (unsigned long)programm_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_STACK_PT) = (unsigned long)stack_page_table | PRESENT_BIT | RW_BIT;
-   
+
+#ifdef __DHBW_KERNEL__
+    *(page_directory + OFFSET_KERNEL_PT) += (unsigned long)&LD_DATA_START;
+    *(page_directory + OFFSET_PROGRAMM_PT) += (unsigned long)&LD_DATA_START;
+    *(page_directory + OFFSET_STACK_PT) += (unsigned long)&LD_DATA_START;
+#endif
+
     //printf("Address of page Directory %p\n",page_directory);
     return page_directory;
 }

@@ -68,6 +68,15 @@ regIDT: .word   limIDT
 #------------------------------------------------------------------
 
         #----------------------------------------------------------
+        # output string for page directory address
+        #----------------------------------------------------------
+pgdirmsg:
+        .ascii  "Page Directory is at linear address 0x"
+pgdiraddr:
+        .ascii  "________\n"
+        .equ    pgdirmsg_len, (.-pgdirmsg)
+
+        #----------------------------------------------------------
         # output string for page fault result structure
         #----------------------------------------------------------
 pgftmsg:.ascii  "________ "             # faulting address
@@ -98,11 +107,11 @@ samples:.long   0x00010000, 0x000100ff, 0x00020000, 0x00020abc
         .global main
         .extern pfhandler
 	.extern init_paging
+        .extern enable_paging
         .extern int_to_hex
         .extern screen_write
         .extern screen_sel_page
 main:
-	call	init_paging
         enter   $0, $0
         pushal
 
@@ -114,8 +123,35 @@ main:
         #   ES - CGA Video Memory
         #----------------------------------------------------------
 
-        xor     %eax, %eax
+        #----------------------------------------------------------
+        # initialise multi-page console
+        #----------------------------------------------------------
+        xor     %eax, %eax       # select page #0
         call    screen_sel_page
+
+        #----------------------------------------------------------
+        # initialise page directory and page tables
+        # page directory address will be returned in EAX
+        #----------------------------------------------------------
+        call    init_paging
+
+        #----------------------------------------------------------
+        # enable paging
+        # page directory address expected in EAX
+        #----------------------------------------------------------
+        call    enable_paging
+
+        #----------------------------------------------------------
+        # print the page directory address
+        #----------------------------------------------------------
+        mov     %cr3, %eax
+        lea     pgdiraddr, %edi
+        mov     $8, %ecx
+        call    int_to_hex
+        lea     pgdirmsg, %esi          # message-offset into ESI
+        mov     $pgdirmsg_len, %ecx     # message-length into ECX
+        call    screen_write
+
         #----------------------------------------------------------
         # read address samples from array
         # end of array is indicated by zero address
