@@ -14,7 +14,7 @@ LDSCRIPT    = ldscript
 PROG        = pgftdemo
 
 TARGETS     = $(PROG).flp
-OBJS        = $(PROG).o pfhandler.o enable_paging.o
+OBJS        = $(PROG).o pfhandler.o paging.o isrpfe.o
 
 .PHONY: all
 .SECONDARY:

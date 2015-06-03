@@ -26,3 +26,27 @@ enable_paging:
         ret
 
 
+        .type           disable_paging, @function
+        .globl          disable_paging
+disable_paging:
+        enter   $0, $0
+        push    %eax
+
+        #----------------------------------------------------------
+        # turn off paging (by clearing bit #31 in register CR0)
+        #----------------------------------------------------------
+        mov     %cr0, %eax              # current machine status
+        btc     $31, %eax               # turn on PG-bit's image
+        mov     %eax, %cr0              # enable page-mappings
+        jmp     .+2                     # flush prefetch queue
+
+        #----------------------------------------------------------
+        # invalidate the CPU's Translation Lookaside Buffer
+        #----------------------------------------------------------
+        xor     %eax, %eax              # setup "dummy" value
+        mov     %eax, %cr3              # and write it to CR3
+
+        pop     %eax
+        leave
+        ret
+

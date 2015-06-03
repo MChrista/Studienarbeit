@@ -61,7 +61,11 @@ pfhandler(unsigned long ft_addr)
     if( (page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT ){ //if present Bit is set
 
         unsigned long *page_table;
+#ifdef __DHBW_KERNEL__
+        page_table = (unsigned long *)((page_directory[page_dir_offset] & 0xFFFFF000) - (unsigned long)&LD_DATA_START);
+#else
         page_table = (unsigned long *)(page_directory[page_dir_offset] & 0xFFFFF000);
+#endif
 
         if((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT){ //if present Bit is not set
             if(page_counter < maxNumberOfPages){          
