@@ -93,7 +93,11 @@ pfhandler(unsigned long ft_addr)
      
                 //Get page table, in which is the page you want to replace and get the physical address of this page
                 unsigned long *temp_page_table;
+#ifdef __DHBW_KERNEL__
+                temp_page_table = (unsigned long *)((page_directory[replace_pde_offset] & 0xFFFFF000) - (unsigned long)&LD_DATA_START);
+#else
                 temp_page_table = (unsigned long *)(page_directory[replace_pde_offset] & 0xFFFFF000);
+#endif
                 unsigned long replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
 
                 //Remove old page
