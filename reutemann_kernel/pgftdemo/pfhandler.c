@@ -15,7 +15,7 @@ unsigned long kernel_page_table[1024] __attribute__((aligned(0x1000)));
 unsigned long programm_page_table[1024] __attribute__((aligned(0x1000)));
 unsigned long stack_page_table[1024] __attribute__((aligned(0x1000)));
 //General Parameters
-int startaddress = 0x200000; //Startaddress for Physical Memory
+int startaddress = 0x20000; //Startaddress for Physical Memory
 int page_counter = 0;
 const int maxNumberOfPages = 4; //Maximum Number of Pages
 unsigned long page_bitfield[1024][32];
