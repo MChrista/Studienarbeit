@@ -5,6 +5,7 @@
 #define OFFSET_PROGRAMM_PT 32
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
+#define KERNEL_MODE_BIT 4
 
 #ifdef __DHBW_KERNEL__
 // Linear address of data segment, defined in ldscript
@@ -188,10 +189,10 @@ unsigned long* init_paging() {
     //Copy Kernel to First Page Table
     //for the first MB
     for(int i = 0; i<256; i++){
-       kernel_page_table[i] = (unsigned long)(i * 0x1000 + 3);
+       kernel_page_table[i] = (unsigned long)(i * 0x1000 + 3) | KERNEL_MODE_BIT;
        setPresentBit(0,i,1);
     }
-    *(page_directory + OFFSET_KERNEL_PT) = (unsigned long)kernel_page_table | PRESENT_BIT | RW_BIT;
+    *(page_directory + OFFSET_KERNEL_PT) = (unsigned long)kernel_page_table | PRESENT_BIT | RW_BIT | KERNEL_MODE_BIT;
     *(page_directory + OFFSET_PROGRAMM_PT) = (unsigned long)programm_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_STACK_PT) = (unsigned long)stack_page_table | PRESENT_BIT | RW_BIT;
 
