@@ -93,7 +93,8 @@ pfhandler(unsigned long ft_addr)
     return &pg_struct;
 } /* end of pfhandler */
 
-int setPresentBit(int pde_offset, int pte_offset, int bool){
+int 
+setPresentBit(int pde_offset, int pte_offset, int bool){
     if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
         return 0;     
     }else{
@@ -107,7 +108,8 @@ int setPresentBit(int pde_offset, int pte_offset, int bool){
     }
 }
 
-int isPresentBit(int pde_offset, int pte_offset){
+int 
+isPresentBit(int pde_offset, int pte_offset){
     if(pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023){
         return 0;     
     }else{
@@ -116,7 +118,8 @@ int isPresentBit(int pde_offset, int pte_offset){
     }
 }
 
-int replacePage(int pde, int pte){
+int 
+replacePage(int pde, int pte){
     do{
         //printf(".\n");
         replace_pte_offset++;
@@ -153,7 +156,11 @@ int replacePage(int pde, int pte){
      * Page Table is already present
      */
     unsigned long *page_table;
+#ifdef __DHBW_KERNEL__
+    page_table = (unsigned long *)((page_directory[pde] & 0xFFFFF000) - (unsigned long)&LD_DATA_START);
+#else
     page_table = (unsigned long *)(page_directory[pde] & 0xFFFFF000);
+#endif
     *(page_table + pte) = (replace_phy_address + RW_BIT + PRESENT_BIT);
     pg_struct.ph_addr = *(page_table + pte) & 0xFFFFF000;
     pg_struct.flags = *(page_table + pte) & 0x00000FFF;
