@@ -44,6 +44,7 @@ typedef struct pg_struct {
 static pg_struct_t pg_struct;
 int setPresentBit(int pde_offset, int pte_offset, int bool);
 int isPresentBit(int pde_offset, int pte_offset);
+int replacePage(int, int);
 
 
 pg_struct_t *
@@ -77,42 +78,7 @@ pfhandler(unsigned long ft_addr)
    // Get next free Page and return new virtual Adress
             }else{
                 //Get physical address of page you want to replace
-                do{
-                    replace_pte_offset++;
-                    if(replace_pte_offset > 1023){
-                        if(replace_pde_offset==1023){
-                            replace_pde_offset=0;
-                            replace_pte_offset=512;//Do not remove Kernel Pages
-                        }else{
-                            replace_pte_offset =0;
-                            replace_pde_offset++;
-                        }
-                        
-                    }
-                }while(!isPresentBit(replace_pde_offset,replace_pte_offset));
-     
-                //Get page table, in which is the page you want to replace and get the physical address of this page
-                unsigned long *temp_page_table;
-#ifdef __DHBW_KERNEL__
-                temp_page_table = (unsigned long *)((page_directory[replace_pde_offset] & 0xFFFFF000) - (unsigned long)&LD_DATA_START);
-#else
-                temp_page_table = (unsigned long *)(page_directory[replace_pde_offset] & 0xFFFFF000);
-#endif
-                unsigned long replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
-
-                //Remove old page
-                *(temp_page_table + replace_pte_offset) &= 0x0;
-                setPresentBit(replace_pde_offset,replace_pte_offset,0);
-                
-                /*Map new page
-                 * Page Table is already present
-                 */
-                *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
-                pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
-                pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
-                //Now set Present Bit in bitmap matrix
-                setPresentBit(page_dir_offset,page_table_offset,1);
-                
+                replacePage(page_dir_offset,page_table_offset);
             }
         }else{
             //printf("There is no Page Fault\n\n");
@@ -170,7 +136,11 @@ int replacePage(int pde, int pte){
     //printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
     //Get page table, in which is the page you want to replace and get the physical address of this page
     unsigned long *temp_page_table;
+#ifdef __DHBW_KERNEL__
+    temp_page_table = (unsigned long *)((page_directory[replace_pde_offset] & 0xFFFFF000) - (unsigned long)&LD_DATA_START);
+#else
     temp_page_table = (unsigned long *)(page_directory[replace_pde_offset] & 0xFFFFF000);
+#endif
     unsigned long replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
 
     //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
