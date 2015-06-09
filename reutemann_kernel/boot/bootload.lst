@@ -4,7 +4,7 @@
  input file    	: bootload.s
  output file   	: bootload.o
  target        	: i686-pc-linux-gnu
- time stamp    	: 2015-05-27T04:55:14.000-0700
+ time stamp    	: 2015-06-09T09:03:44.000+0200
 
    1              	#-----------------------------------------------------------------
    2              	#

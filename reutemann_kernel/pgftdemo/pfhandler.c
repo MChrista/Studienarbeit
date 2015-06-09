@@ -6,6 +6,13 @@
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
 
+#ifdef __DHBW_KERNEL__
+// Linear address of data segment, defined in ldscript
+// use only in Kernel context with x86 segmentation
+// being enabled
+extern unsigned long LD_DATA_START;
+#endif
+
 
 /*
  * Declaration of Page Directory and Page tables
@@ -54,7 +61,11 @@ pfhandler(unsigned long ft_addr)
     if( (page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT ){ //if present Bit is set
 
         unsigned long *page_table;
+#ifdef __DHBW_KERNEL__
+        page_table = (unsigned long *)((page_directory[page_dir_offset] & 0xFFFFF000) - (unsigned long)&LD_DATA_START);
+#else
         page_table = (unsigned long *)(page_directory[page_dir_offset] & 0xFFFFF000);
+#endif
 
         if((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT){ //if present Bit is not set
             if(page_counter < maxNumberOfPages){          
@@ -82,7 +93,11 @@ pfhandler(unsigned long ft_addr)
      
                 //Get page table, in which is the page you want to replace and get the physical address of this page
                 unsigned long *temp_page_table;
+#ifdef __DHBW_KERNEL__
+                temp_page_table = (unsigned long *)((page_directory[replace_pde_offset] & 0xFFFFF000) - (unsigned long)&LD_DATA_START);
+#else
                 temp_page_table = (unsigned long *)(page_directory[replace_pde_offset] & 0xFFFFF000);
+#endif
                 unsigned long replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
 
                 //Remove old page
@@ -160,7 +175,13 @@ unsigned long* init_paging() {
     *(page_directory + OFFSET_KERNEL_PT) = (unsigned long)kernel_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_PROGRAMM_PT) = (unsigned long)programm_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_STACK_PT) = (unsigned long)stack_page_table | PRESENT_BIT | RW_BIT;
-   
+
+#ifdef __DHBW_KERNEL__
+    *(page_directory + OFFSET_KERNEL_PT) += (unsigned long)&LD_DATA_START;
+    *(page_directory + OFFSET_PROGRAMM_PT) += (unsigned long)&LD_DATA_START;
+    *(page_directory + OFFSET_STACK_PT) += (unsigned long)&LD_DATA_START;
+#endif
+
     //printf("Address of page Directory %p\n",page_directory);
     return page_directory;
 }
