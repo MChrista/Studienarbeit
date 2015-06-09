@@ -16,3 +16,4 @@ uint32_t* init_paging();
 int setPresentBit(int , int , int);
 int isPresentBit(int, int);
 int replacePage(int, int );
+int getClassOfPage(int);

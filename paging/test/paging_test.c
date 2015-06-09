@@ -14,6 +14,18 @@ struct page_fault_result {
     int flags;
 };
 
+void testPageClass();
+
+void testPageClass(){
+    printf("Class of Page %d\n",getClassOfPage(0));
+    printf("Class of Page %d\n",getClassOfPage(1));
+    printf("Class of Page %d\n",getClassOfPage(2));
+    printf("Class of Page %d\n",getClassOfPage(32));
+    printf("Class of Page %d\n",getClassOfPage(64));
+    printf("Class of Page %d\n",getClassOfPage(96));
+    printf("Class of Page %d\n",getClassOfPage(99));
+    printf("Class of Page %d\n",getClassOfPage(67));
+}
 
 void testPageFault(int virtualAddr) {
     struct page_fault_result * pf_result;
@@ -134,12 +146,13 @@ int main(int argc, char** argv) {
     } else {
         printf("No Testdata given. Using default.\n");
         printf("\nAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
+        testPageClass();
         testPaging(0x00010000, pageDir);
         testPaging(0x08048000, pageDir);
         testPaging(0x60000000, pageDir);
         testPaging(0x08048FFF, pageDir);
         printf("Testing Bitfield\n");
-        testBitfield();
+        //testBitfield();
         printf("\nTESTING OVER\n\n");
     }
     exit(1);
