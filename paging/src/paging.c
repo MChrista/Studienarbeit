@@ -74,45 +74,7 @@ struct page_fault_result * pageFault( int virtualAddr){
    // Get next free Page and return new virtual Adress
             }else{
                 //printf("Replace Page\n"); 
-                //Get physical address of page you want to replace
-                do{
-                    //printf(".\n");
-                    replace_pte_offset++;
-                    if(replace_pte_offset > 1023){
-                        if(replace_pde_offset==1023){
-                            replace_pde_offset=0;
-                            replace_pte_offset=512;//Do not remove Kernel Pages
-                        }else{
-                            replace_pte_offset =0;
-                            replace_pde_offset++;
-                        }
-                        
-                    }
-                }while(!isPresentBit(replace_pde_offset,replace_pte_offset));
-                
-                
-                //printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
-                //Get page table, in which is the page you want to replace and get the physical address of this page
-                uint32_t *temp_page_table;
-                temp_page_table = (uint32_t *)(page_directory[replace_pde_offset] & 0xFFFFF000);
-                uint32_t replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
-                
-                //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
-                //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
-                //Remove old page
-                *(temp_page_table + replace_pte_offset) &= 0x0;
-                setPresentBit(replace_pde_offset,replace_pte_offset,0);
-                
-                /*Map new page
-                 * Page Table is already present
-                 */
-                *(page_table + page_table_offset) = (replace_phy_address + RW_BIT + PRESENT_BIT);
-                ret_info.physical_address = replace_phy_address & 0xFFFFF000;
-                ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
-                //Now set Present Bit in bitmap matrix
-                setPresentBit(page_dir_offset,page_table_offset,1);
-                //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
-                //printf("Check Bitfield Offsets: %i\n\n", isPresentBit(page_dir_offset,page_table_offset));
+                replacePage(page_dir_offset,page_table_offset);
                 
             }
         }else{
@@ -152,6 +114,48 @@ int isPresentBit(int pde_offset, int pte_offset){
         int index = pte_offset/32;
         return ((page_bitfield[pde_offset][index] & (PRESENT_BIT << (pte_offset%32)) ) != NOT_PRESENT_BIT);
     }
+}
+
+int replacePage(int pde, int pte){
+    do{
+        //printf(".\n");
+        replace_pte_offset++;
+        if(replace_pte_offset > 1023){
+            if(replace_pde_offset==1023){
+                replace_pde_offset=0;
+                replace_pte_offset=512;//Do not remove Kernel Pages
+            }else{
+                replace_pte_offset =0;
+                replace_pde_offset++;
+            }
+
+        }
+    }while(!isPresentBit(replace_pde_offset,replace_pte_offset));
+
+
+    //printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
+    //Get page table, in which is the page you want to replace and get the physical address of this page
+    uint32_t *temp_page_table;
+    temp_page_table = (uint32_t *)(page_directory[replace_pde_offset] & 0xFFFFF000);
+    uint32_t replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
+
+    //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
+    //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
+    //Remove old page
+    *(temp_page_table + replace_pte_offset) &= 0x0;
+    setPresentBit(replace_pde_offset,replace_pte_offset,0);
+
+    /*Map new page
+     * Page Table is already present
+     */
+    uint32_t *page_table;
+    page_table = (uint32_t *)(page_directory[pde] & 0xFFFFF000);
+    *(page_table + pte) = (replace_phy_address + RW_BIT + PRESENT_BIT);
+    ret_info.physical_address = replace_phy_address & 0xFFFFF000;
+    ret_info.flags = *(page_table + pte) & 0x00000FFF;
+    //Now set Present Bit in bitmap matrix
+    setPresentBit(pde,pte,1);
+    return 1;
 }
 
 
