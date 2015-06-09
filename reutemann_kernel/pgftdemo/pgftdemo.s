@@ -86,21 +86,27 @@ pgdiraddr:
         .ascii  "________\n"
         .equ    pgdirmsg_len, (.-pgdirmsg)
 
+rwchar: .ascii  "RW"
+
         #----------------------------------------------------------
         # output string for linear address we attempt to access
         #----------------------------------------------------------
-addrmsg:.ascii  "________\n"
+addrmsg:.ascii  "________   "
+pgflags:.ascii  "____\n"
         .equ    addrmsg_len, (.-addrmsg)
 
         #----------------------------------------------------------
         # address samples
+        #
+        # NOTE: bit 31 is used to indicate write access
         #----------------------------------------------------------
 samples:#.long   0x00010000, 0x000100ff, 0x00020000, 0x00020abc
         #.long   0x000B8000, 0x000110ff, 0x08048000, 0x08048000
-        #.long   0xfffffffc, 0x08000000, 0x08048123, 0x08049321
         #.long   0x08051c00, 0x08050abc, 0x60000000, 0x08048fff
         .long   0x08080000, 0x08048123, 0x08049321, 0x08049004
-        .long   0x080a0fff, 0x08049321, 0x08049004, 0x18050abc
+        .long   0x080a0fff, 0x08049321, 0x08049004, 0x08050abc
+        .long   0x880a0fff, 0x880a0fff, 0x880a0004, 0x88048FFF
+        .long   0x98050abc
         .long   0x00000000
 
 oldesp: .long   0x00000000
@@ -178,14 +184,24 @@ read_samples:
         mov     samples(,%ecx,4), %eax
         test    %eax, %eax
         jz      read_done
-        pushl   %ecx
+        push    %ecx                    # save array index
+        push    %eax                    # save sample address
 
         #----------------------------------------------------------
         # convert and print the linear address in EAX
         #----------------------------------------------------------
+        mov     %eax, %edx
+        shr     $31, %edx
+        mov     rwchar(%edx), %dl
+        mov     %dl, addrmsg+9
+        and     $0x7fffffff, %eax       # mask out MSB
         lea     addrmsg, %edi           # pointer to output string
         mov     $8, %ecx                # number of output digits
         call    int_to_hex
+
+        call    get_pg_flags
+        mov     %eax, pgflags
+
         lea     addrmsg, %esi           # message-offset
         mov     $addrmsg_len, %ecx      # message-length
         call    screen_write
@@ -193,9 +209,17 @@ read_samples:
         #----------------------------------------------------------
         # now try to access the address
         #----------------------------------------------------------
-        mov     %gs:(%eax), %ebx
-
-        popl    %ecx
+        pop     %eax                    # restore sample address
+        test    $0x80000000, %eax
+        jnz     do_write
+        and     $0x7fffffff, %eax       # mask out MSB
+        mov     %gs:(%eax), %ebx        # read access
+        jmp     skip_write
+do_write:
+        and     $0x7fffffff, %eax       # mask out MSB
+        notl    %gs:(%eax)              # write access
+skip_write:
+        popl    %ecx                    # restore array index
         inc     %ecx
         jmp     read_samples
 read_done:
@@ -216,6 +240,68 @@ pfcontinue:
         leave
         ret
 
+#------------------------------------------------------------------
+# read the paging flags for the given linear address
+#       %eax (in): linear address
+#
+# return: flags in %eax
+#------------------------------------------------------------------
+get_pg_flags:
+        enter   $4, $0
+        push    %edx
+        push    %esi
+
+        mov     %eax, %edx
+        mov     %cr3, %esi        # linear page directory address
+
+        # calculate segmented page table address
+        shr     $22, %edx            # page directory entry
+        sub     $LD_DATA_START, %esi # segmented page directory address
+        mov     (%esi,%edx,4), %esi  # linear address of page table
+        test    $1, %esi             # page table present?
+        jz      table_not_mapped     # yes, there is no table mapped
+
+        sub     $LD_DATA_START, %esi # segmented page table address
+        and     $0xfffff000, %esi
+        mov     %eax, %edx
+        shr     $12, %edx            # page table entry
+        and     $0x3ff, %edx
+        lea     (%esi,%edx,4), %esi
+        mov     (%esi), %edx         # linear address of page
+        and     $0xfff, %edx
+        mov     $0x2e202020, %eax
+        test    $1, %edx             # check 'present' bit
+        jz      get_pg_flags_end
+        mov     $'P', %al
+        shl     $8, %eax
+        mov     $'R', %al
+        test    $2, %edx             # check 'read/write' bit
+        jz      read_only
+        mov     $'W', %al
+read_only:
+        shl     $8, %eax
+        mov     $'a', %al
+        test    $1<<5, %edx          # check 'accessed' bit
+        jz      not_accessed
+        mov     $'A', %al
+        xorl    $1<<5, (%esi)        # flip 'accessed' bit
+not_accessed:
+        shl     $8, %eax
+        mov     $'d', %al
+        test    $1<<6, %edx          # check 'dirty' bit
+        jz      get_pg_flags_end
+        mov     $'D', %al
+        jmp     get_pg_flags_end
+
+table_not_mapped:
+        mov     $0x20202020, %eax
+
+get_pg_flags_end:
+
+        pop     %esi
+        pop     %edx
+        leave
+        ret
 
 #------------------------------------------------------------------
 # disable interrupts and halt processor
