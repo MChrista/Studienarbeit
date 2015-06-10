@@ -52,10 +52,10 @@ void testPageFault(int virtualAddr) {
 
 void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory)
 {   
-    printf("Setting FLAGS %08X for PDE: %03X PTE: %03X\n", flags,  PDE(virtualAddr), PTE(virtualAddr));
+    
     uint32_t * page_table  = page_directory[PDE(virtualAddr)]&0xFFFFF000;
     int * physicalAddr = (int *) (page_table[PTE(virtualAddr)]&0xFFFFF000);
-    printf("Former Address is %08X\n", physicalAddr);
+    
     page_table[PTE(virtualAddr)] |= flags;
     
 }
@@ -165,7 +165,6 @@ int main(int argc, char** argv) {
         printf("No Testdata given. Using default.\n");
         testPageClass();
         printf("\n        Address\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
-        testPageFault(0x00010000);
         testPageFault(0x08048000);
         testPageFault(0x08049000);
         testPageFault(0x08050000);
@@ -173,18 +172,20 @@ int main(int argc, char** argv) {
         printf("Flags:    ACCESSED,DIRTY\n");
         setFlags(     0x08048000,  ACCESSED | DIRTY, pageDir);
         testPageFault(0x08048000);   
-        printf("Flags:    USER\n");
-        setFlags(     0x08049000, USER, pageDir);
+        printf("Flags:    Accesed\n");
+        setFlags(     0x08049000, ACCESSED | DIRTY, pageDir);
         testPageFault(0x08049000);
-        printf("Flags:    ACCESSED\n");
-        setFlags(     0x08050000, ACCESSED, pageDir);
+        printf("Flags:    Dirty\n");
+        setFlags(     0x08050000, ACCESSED | DIRTY, pageDir);
         testPageFault(0x08050000);
-        printf("Flags:    USER, ACCESSED, DIRTY\n");
-        setFlags(     0x08051000, USER | ACCESSED | DIRTY, pageDir);
+        //printf("Flags:    USER, ACCESSED, DIRTY\n");
+        setFlags(     0x08051000, ACCESSED | DIRTY, pageDir);
         testPageFault(0x08051000);
-        testPageFault(0x08048000);
-        testPageFault(0x60000000);
-        testPageFault(0x08048FFF);
+        testPageFault(0x08052000);
+        //printf("Flags:    ACCESSED,DIRTY\n");
+        setFlags(     0x08052000,  ACCESSED | DIRTY, pageDir);
+        
+        testPageFault(0x08053FFF);
         //printf("Testing Bitfield\n");
         //testBitfield();
         printf("\nTESTING OVER\n\n");
