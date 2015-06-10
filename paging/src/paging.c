@@ -73,6 +73,23 @@ struct page_fault_result * pageFault(int virtualAddr) {
         page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000);
         if ((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT) { //if present Bit is not set
             uint32_t memoryAddress = getPageFrame();
+            
+            int counter = memoryAddress & 0xFFF;
+            memoryAddress &= 0xFFFFF000;
+            page_addresses_on_storage[counter][0] = page_dir_offset;
+            page_addresses_on_storage[counter][1] = page_table_offset;
+            
+            if((*(page_table + page_table_offset) & 0x400) == 0x400){
+                page_addresses_on_storage[counter][2] = *(page_table + page_table_offset) & 0xFFFFF000;
+                loadPageFromStorage(memoryAddress, *(page_table + page_table_offset) & 0xFFFFF000);
+                memoryAddress |= PRESENT_ON_STORAGE;
+                        
+            }
+            memoryAddress = memoryAddress | PRESENT_BIT | RW_BIT;
+            *(page_table + page_table_offset) = memoryAddress;
+            setPresentBit(page_dir_offset, page_table_offset, 1);
+            ret_info.physical_address = memoryAddress & 0xFFFFF000;
+            ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
             //if auf disk 0x400
             
             
