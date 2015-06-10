@@ -151,7 +151,7 @@ replacePage(int pde, int pte) {
             tmp_class = getClassOfPage(flags);
             
             // Delete access flags of page (second chance)
-            temp_page_table[counter_pte] = temp_page_table[counter_pte] & 0xFEF;
+            temp_page_table[counter_pte] = temp_page_table[counter_pte] & 0xFDF;
             
             if (class > tmp_class) {
                 class = tmp_class;

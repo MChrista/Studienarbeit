@@ -62,46 +62,51 @@ struct page_fault_result * pageFault(int virtualAddr) {
     ret_info.pte = page_table_offset;
     ret_info.offset = virtualAddr & 0x00000FFF;
     ret_info.fault_address = virtualAddr;
-    
+
     if ((page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT) { //if present Bit is set
         uint32_t *page_table;
         page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000);
         if ((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT) { //if present Bit is not set
-            getPageFrame(page_table,page_dir_offset,page_table_offset);
+            uint32_t memoryAddress = getPageFrame();
+            //if auf disk 0x400
+            
+            
         } else {
             //printf("There is no Page Fault\n\n");
             ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
             ret_info.physical_address = *(page_table + page_table_offset) & 0xFFFFF000;
         }
 
-    ret_info.flags = page_table[page_table_offset] & 0x00000FFF;
     } else {
         //printf("Segmentation Fault. Page Table is not present.\n");
         ret_info.physical_address = 0xFFFFFFFF;
         ret_info.flags = 0x0;
     }
-    
     return &ret_info;
 }
 
-void 
-getPageFrame(uint32_t *page_table,int pde ,int pte){
+uint32_t 
+getPageFrame(){
     if (page_counter < maxNumberOfPages) {
-        uint32_t next_address = (uint32_t) (startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
+        uint32_t next_address = (uint32_t) (startaddress + page_counter * 0x1000 + PRESENT_BIT + RW_BIT);
         //If Storage bit is set
         if((*(page_table + pte) & 0x400) == 0x400){
-            page_addresses_on_storage[page_counter-1][0] = pde;
-            page_addresses_on_storage[page_counter-1][0] = pte;
-            page_addresses_on_storage[page_counter-1][0] = *(page_table + pte) & 0xFFFFF000;
+            page_addresses_on_storage[page_counter][0] = pde;
+            page_addresses_on_storage[page_counter][1] = pte;
+            page_addresses_on_storage[page_counter][2] = *(page_table + pte) & 0xFFFFF000;
             loadPageFromStorage(next_address, *(page_table + pte) & 0xFFFFF000);
         }
         *(page_table + pte) = next_address;
         setPresentBit(pde, pte, 1);
         ret_info.physical_address = next_address & 0xFFFFF000;
         ret_info.flags = *(page_table + pte) & 0x00000FFF;
+        page_counter++;
+        return next_address;
     } else {
         //printf("Replace Page\n"); 
-        replacePage(pde, pte);
+        uint32_t virtAddr = getAddressOfPageToReplace();
+        uint32_t memoryAddress = swap(virtAddr);
+        return memoryAddress;
 
     }
 }
@@ -114,6 +119,10 @@ loadPageFromStorage(uint32_t memory_address, uint32_t storage_address){
 void
 savePageToStorage(uint32_t memory_address, uint32_t storage_address){
     
+}
+
+uint32_t swap(uint32_t virtAddr){
+    return 0;
 }
 
 int
@@ -143,8 +152,9 @@ isPresentBit(int pde_offset, int pte_offset) {
     }
 }
 
-int
-replacePage(int pde, int pte) {
+uint32_t
+getAddressOfPageToReplace() {
+    int pte,pde;
     /* Implementation of NRU
      * 
     A=0, M=0 (nicht gelesen, nicht verändert)
@@ -213,7 +223,7 @@ replacePage(int pde, int pte) {
     
     //Remove old page
     //Search for entry in page_addresses_on_storage
-    /*
+    
     int counter = 0;
     uint32_t storage_address = 0;
     while(counter < maxNumberOfPages && storage_address==0){
@@ -231,7 +241,7 @@ replacePage(int pde, int pte) {
     if((*(temp_page_table + replace_pte_offset) & 0x400) == 0x400){ //If page is already present on storage
         
     }
-    */
+    
     *(temp_page_table + replace_pte_offset) &= 0x0;
     setPresentBit(replace_pde_offset, replace_pte_offset, 0);
 
