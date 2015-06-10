@@ -22,6 +22,10 @@ uint32_t stack_page_table[1024] __attribute__((aligned(0x1000)));
 //General Parameters
 int startaddress = 0x200000; //Startaddress for Physical Memory
 int page_counter = 0;
+
+int startOfStorage = 0x300000;
+
+
 const int maxNumberOfPages = 4; //Maximum Number of Pages
 uint32_t page_bitfield[1024][32];
 
@@ -134,7 +138,7 @@ replacePage(int pde, int pte) {
     A=1, M=1 (gelesen und verändert)
      */
     uint32_t *temp_page_table;
-    int start_pde, start_pte, counter_pde, counter_pte, class, flags,tmp_class;
+    int start_pde, start_pte, counter_pde, counter_pte, class, flags, tmp_class;
 
 
 
@@ -144,9 +148,9 @@ replacePage(int pde, int pte) {
     counter_pte = replace_pte_offset;
     class = 4; //Start at highest class + 1 to fetch the first page with class 3 if all pages have class 3
 
-    printf("Start to search new replacing page%d %d\n", start_pde,start_pte);
+    printf("Start to search new replacing page%d %d\n", start_pde, start_pte);
     do {
-        
+
         counter_pte++;
         if (counter_pte > 1023) {
             if (counter_pde == 1023) {
@@ -159,7 +163,7 @@ replacePage(int pde, int pte) {
 
         }
         if (isPresentBit(counter_pde, counter_pte)) {
-            printf("Found page at %d %d\n",counter_pde,counter_pte);
+            printf("Found page at %d %d\n", counter_pde, counter_pte);
 #ifdef __DHBW_KERNEL__
             temp_page_table = (uint32_t *) ((page_directory[counter_pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
 #else
@@ -169,7 +173,7 @@ replacePage(int pde, int pte) {
             tmp_class = getClassOfPage(flags);
             printf("Flags %i\n", flags);
             printf("Class of Page %i\n", tmp_class);
-            if(class > tmp_class){
+            if (class > tmp_class) {
                 class = tmp_class;
                 replace_pde_offset = counter_pde;
                 replace_pte_offset = counter_pte;
@@ -177,12 +181,16 @@ replacePage(int pde, int pte) {
         }
         //printf("Bool of While %d\n",counter_pde != start_pde && counter_pte != start_pte);
     } while ((counter_pde != start_pde || counter_pte != start_pte) && (class != 0)); //Until walk through bitfield is complete
-    
 
-    printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
+
+    printf("Replace Offsets are %d %d\n", replace_pde_offset, replace_pte_offset);
     //Get page table, in which is the page you want to replace and get the physical address of this page
 
-    temp_page_table = (uint32_t *) (page_directory[replace_pde_offset] & 0xFFFFF000);
+#ifdef __DHBW_KERNEL__
+    temp_page_table = (uint32_t *) ((page_directory[counter_pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
+#else
+    temp_page_table = (uint32_t *) (page_directory[counter_pde] & 0xFFFFF000);
+#endif
     uint32_t replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
 
     //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
@@ -195,7 +203,11 @@ replacePage(int pde, int pte) {
      * Page Table is already present
      */
     uint32_t *page_table;
+#ifdef __DHBW_KERNEL__
+    page_table = (uint32_t *) ((page_directory[pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
+#else
     page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
+#endif
     *(page_table + pte) = (replace_phy_address + RW_BIT + PRESENT_BIT);
     ret_info.physical_address = replace_phy_address & 0xFFFFF000;
     ret_info.flags = *(page_table + pte) & 0x00000FFF;
@@ -204,26 +216,23 @@ replacePage(int pde, int pte) {
     return 1;
 }
 
-int getClassOfPage(int flags){
+int getClassOfPage(int flags) {
     //Bit 5: accesed
     //Bit 6: dirty
-    if((flags & 0x20)== 0x20){
-        if((flags & 0x40) == 0x40){
+    if ((flags & 0x20) == 0x20) {
+        if ((flags & 0x40) == 0x40) {
             return 3;
-        }else{
+        } else {
             return 2;
         }
-    }else{
-        if((flags & 0x40) == 0x40){
+    } else {
+        if ((flags & 0x40) == 0x40) {
             return 1;
-        }else{
+        } else {
             return 0;
         }
     }
 }
-
-
-
 
 uint32_t*
 init_paging() {

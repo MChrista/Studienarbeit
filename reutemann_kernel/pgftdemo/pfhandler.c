@@ -5,7 +5,7 @@
 #define OFFSET_PROGRAMM_PT 32
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
-#define KERNEL_MODE_BIT 4
+#define USER_MODE_BIT 4
 
 #ifdef __DHBW_KERNEL__
 // Linear address of data segment, defined in ldscript
@@ -69,7 +69,7 @@ pfhandler(unsigned long ft_addr) {
 
         if ((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT) { //if present Bit is not set
             if (page_counter < maxNumberOfPages) {
-                unsigned long next_address = (unsigned long) (startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
+                unsigned long next_address = (unsigned long) (startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT + USER_MODE_BIT);
                 *(page_table + page_table_offset) = next_address;
                 setPresentBit(page_dir_offset, page_table_offset, 1);
                 pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
@@ -168,8 +168,7 @@ replacePage(int pde, int pte) {
 #endif
     unsigned long replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
 
-    //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
-    //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
+
     //Remove old page
     *(temp_page_table + replace_pte_offset) &= 0x0;
     setPresentBit(replace_pde_offset, replace_pte_offset, 0);
@@ -183,7 +182,7 @@ replacePage(int pde, int pte) {
 #else
     page_table = (unsigned long *) (page_directory[pde] & 0xFFFFF000);
 #endif
-    *(page_table + pte) = (replace_phy_address + RW_BIT + PRESENT_BIT);
+    *(page_table + pte) = (replace_phy_address + RW_BIT + PRESENT_BIT + USER_MODE_BIT);
     pg_struct.ph_addr = *(page_table + pte) & 0xFFFFF000;
     pg_struct.flags = *(page_table + pte) & 0x00000FFF;
     //Now set Present Bit in bitmap matrix
@@ -228,12 +227,12 @@ unsigned long* init_paging() {
     //Copy Kernel to First Page Table
     //for the first MB
     for (int i = 0; i < 256; i++) {
-        kernel_page_table[i] = (unsigned long) (i * 0x1000 + 3) | KERNEL_MODE_BIT;
+        kernel_page_table[i] = (unsigned long) (i * 0x1000 + 3);
         setPresentBit(0, i, 1);
     }
-    *(page_directory + OFFSET_KERNEL_PT) = (unsigned long) kernel_page_table | PRESENT_BIT | RW_BIT | KERNEL_MODE_BIT;
-    *(page_directory + OFFSET_PROGRAMM_PT) = (unsigned long) programm_page_table | PRESENT_BIT | RW_BIT;
-    *(page_directory + OFFSET_STACK_PT) = (unsigned long) stack_page_table | PRESENT_BIT | RW_BIT;
+    *(page_directory + OFFSET_KERNEL_PT) = (unsigned long) kernel_page_table | PRESENT_BIT | RW_BIT ;
+    *(page_directory + OFFSET_PROGRAMM_PT) = (unsigned long) programm_page_table | PRESENT_BIT | RW_BIT | USER_MODE_BIT;
+    *(page_directory + OFFSET_STACK_PT) = (unsigned long) stack_page_table | PRESENT_BIT | RW_BIT | USER_MODE_BIT;
 
 #ifdef __DHBW_KERNEL__
     *(page_directory + OFFSET_KERNEL_PT) += (unsigned long) &LD_DATA_START;
