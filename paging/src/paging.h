@@ -20,3 +20,4 @@ int getClassOfPage(int);
 void loadPageFromStorage(uint32_t , uint32_t );
 int isPresentBit(int , int );
 void getPageFrame(uint32_t *,int ,int );
+uint32_t swap(uint32_t virtAddr);

@@ -116,6 +116,23 @@ savePageToStorage(uint32_t memory_address, uint32_t storage_address){
     
 }
 
+int indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte)
+{
+    for (int i=0; i<MAX_NUMBER_OF_PAGES; i++)
+    {
+        if (page_addresses_on_storage[i][0] == pde 
+         && page_addresses_on_storage[i][1] == pte)
+        {
+            return i;
+        }
+    }
+}
+
+uint32_t getFreeFrameOnDisk()
+{
+    return 0;
+}
+
 uint32_t swap(uint32_t virtAddr){
     
     // Compute Parameters
@@ -132,7 +149,7 @@ uint32_t swap(uint32_t virtAddr){
     if ((flags & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE )
     {
         // Get address of page copy on disk
-        uint32_t storageAddr = ;
+        uint32_t storageAddr = page_addresses_on_storage[pageAddrOnStorageIndex][2];
         
         // Check if page was modified, only save it then
         if ((flags & DIRTY) == DIRTY)
@@ -147,8 +164,8 @@ uint32_t swap(uint32_t virtAddr){
     else
     {   
         // Get free storage address to save page to
-        uint32_t storageAddr = ;
-        savePageToStorage(memoryAddr, storageAddr)
+        uint32_t storageAddr = getFreeFrameOnDisk();
+        savePageToStorage(memoryAddr, storageAddr);
     }
     
     // Reset present bit
@@ -157,17 +174,7 @@ uint32_t swap(uint32_t virtAddr){
     return memoryAddr | pageAddrOnStorageIndex;
 }
 
-int indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte)
-{
-    for (int i=0; i<MAX_NUMBER_OF_PAGES; i++)
-    {
-        if (page_addresses_on_storage[i][0] == pde 
-         && page_addresses_on_storage[i][1] == pte)
-        {
-            return i;
-        }
-    }
-}
+
 
 int
 setPresentBit(int pde_offset, int pte_offset, int bool) {

@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
             testPageFault(testAddr);
         }
         printf("EOF");
-
+ 
     } else {
         printf("No Testdata given. Using default.\n");
         testPageClass();
