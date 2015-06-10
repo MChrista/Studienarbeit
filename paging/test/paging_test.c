@@ -5,6 +5,16 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+#define PDE(addr) ((addr & 0xFFC00000) >> 22)
+#define PTE(addr) ((addr & 0x003FF000) >> 12)
+
+#define PRESENT   0x00000001
+#define READWRITE 0x00000002
+#define USER      0x00000004
+#define ACCESSED  0x00000020
+#define DIRTY     0x00000040
+
+
 struct page_fault_result {
     int fault_address;
     int pde;
@@ -40,7 +50,15 @@ void testPageFault(int virtualAddr) {
                 );
 }
 
-
+void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory)
+{   
+    printf("Setting FLAGS %08X for PDE: %03X PTE: %03X\n", flags,  PDE(virtualAddr), PTE(virtualAddr));
+    uint32_t * page_table  = page_directory[PDE(virtualAddr)]&0xFFFFF000;
+    int * physicalAddr = (int *) (page_table[PTE(virtualAddr)]&0xFFFFF000);
+    printf("Former Address is %08X\n", physicalAddr);
+    page_table[PTE(virtualAddr)] |= flags;
+    
+}
 
 void testPaging(int virtualAddr, uint32_t * page_directory) {
 
@@ -145,13 +163,29 @@ int main(int argc, char** argv) {
 
     } else {
         printf("No Testdata given. Using default.\n");
-        printf("\nAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
         testPageClass();
-        testPaging(0x00010000, pageDir);
-        testPaging(0x08048000, pageDir);
-        testPaging(0x60000000, pageDir);
-        testPaging(0x08048FFF, pageDir);
-        printf("Testing Bitfield\n");
+        printf("\n        Address\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
+        testPageFault(0x00010000);
+        testPageFault(0x08048000);
+        testPageFault(0x08049000);
+        testPageFault(0x08050000);
+        testPageFault(0x08051000);
+        printf("Flags:    ACCESSED,DIRTY\n");
+        setFlags(     0x08048000,  ACCESSED | DIRTY, pageDir);
+        testPageFault(0x08048000);   
+        printf("Flags:    USER\n");
+        setFlags(     0x08049000, USER, pageDir);
+        testPageFault(0x08049000);
+        printf("Flags:    ACCESSED\n");
+        setFlags(     0x08050000, ACCESSED, pageDir);
+        testPageFault(0x08050000);
+        printf("Flags:    USER, ACCESSED, DIRTY\n");
+        setFlags(     0x08051000, USER | ACCESSED | DIRTY, pageDir);
+        testPageFault(0x08051000);
+        testPageFault(0x08048000);
+        testPageFault(0x60000000);
+        testPageFault(0x08048FFF);
+        //printf("Testing Bitfield\n");
         //testBitfield();
         printf("\nTESTING OVER\n\n");
     }

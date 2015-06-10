@@ -59,7 +59,7 @@ struct page_fault_result * pageFault(int virtualAddr) {
     ret_info.pte = page_table_offset;
     ret_info.offset = virtualAddr & 0x00000FFF;
     ret_info.fault_address = virtualAddr;
-
+    
     if ((page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT) { //if present Bit is set
 
         uint32_t *page_table;
@@ -93,11 +93,13 @@ struct page_fault_result * pageFault(int virtualAddr) {
             ret_info.physical_address = *(page_table + page_table_offset) & 0xFFFFF000;
         }
 
+    ret_info.flags = page_table[page_table_offset] & 0x00000FFF;
     } else {
         //printf("Segmentation Fault. Page Table is not present.\n");
         ret_info.physical_address = 0xFFFFFFFF;
         ret_info.flags = 0x0;
     }
+    
     return &ret_info;
 }
 
