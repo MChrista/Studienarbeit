@@ -102,8 +102,6 @@ isrPFE:
         call    screen_write
 
         #----------------------------------------------------------
-        # TODO:
-        # flags not yet supported
         # just make a simple check of the physical address
         # 0xffffffff indicates that the page fault could not be
         # resolved
