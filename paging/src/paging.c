@@ -4,6 +4,13 @@
 #include <math.h>
 #include "paging.h"
 
+#define PRESENT_ON_STORAGE 0x400
+#define DIRTY 0x040
+#define MAX_NUMBER_OF_PAGES 4
+
+#define PDE(addr) ((addr & 0xFFC00000) >> 22)
+#define PTE(addr) ((addr & 0x003FF000) >> 12)
+
 /*
  * Declaration of Page Directory and Page tables
  */
@@ -26,10 +33,8 @@ int page_counter = 0;
 int startOfStorage = 0x300000;
 int storagePageCounter = 0;
 
-
-const int maxNumberOfPages = 4; //Maximum Number of Pages
 uint32_t page_bitfield[1024][32];
-uint32_t page_addresses_on_storage[4][3];
+uint32_t page_addresses_on_storage[MAX_NUMBER_OF_PAGES][3];
 
 
 
@@ -87,7 +92,7 @@ struct page_fault_result * pageFault(int virtualAddr) {
 
 uint32_t 
 getPageFrame(){
-    if (page_counter < maxNumberOfPages) {
+    if (page_counter < MAX_NUMBER_OF_PAGES) {
         uint32_t next_address = (uint32_t) (startaddress + page_counter * 0x1000 + PRESENT_BIT + RW_BIT);
         //If Storage bit is set
         if((*(page_table + pte) & 0x400) == 0x400){
@@ -122,7 +127,56 @@ savePageToStorage(uint32_t memory_address, uint32_t storage_address){
 }
 
 uint32_t swap(uint32_t virtAddr){
-    return 0;
+    
+    // Compute Parameters
+    int pde = PDE(virtAddr);
+    int pte = PDE(virtAddr);
+    
+    uint32_t * page_table = page_directory[pde];
+    uint32_t   memoryAddr = page_table[pte] & 0xFFFFF000;
+    int        flags      = page_table[pte] & 0xFFF;
+    
+    int pageAddrOnStorageIndex = indexOfDiskAddrByPdePte(pde, pte);
+    
+    // Check if page to swap is on disk
+    if ((flags & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE )
+    {
+        // Get address of page copy on disk
+        uint32_t storageAddr = ;
+        
+        // Check if page was modified, only save it then
+        if ((flags & DIRTY) == DIRTY)
+        {   
+            // Overwrite copy on disk with modified page 
+            savePageToStorage(memoryAddr, storageAddr);
+        }
+        
+        // Store disk address of page copy in its page table entry.
+        page_table[pte] = storageAddr;
+    }
+    else
+    {   
+        // Get free storage address to save page to
+        uint32_t storageAddr = ;
+        savePageToStorage(memoryAddr, storageAddr)
+    }
+    
+    // Reset present bit
+    setPresentBit(pde, pte, 0);
+    
+    return memoryAddr | pageAddrOnStorageIndex;
+}
+
+int indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte)
+{
+    for (int i=0; i<MAX_NUMBER_OF_PAGES; i++)
+    {
+        if (page_addresses_on_storage[i][0] == pde 
+         && page_addresses_on_storage[i][1] == pte)
+        {
+            return i;
+        }
+    }
 }
 
 int
@@ -226,7 +280,7 @@ getAddressOfPageToReplace() {
     
     int counter = 0;
     uint32_t storage_address = 0;
-    while(counter < maxNumberOfPages && storage_address==0){
+    while(counter < MAX_NUMBER_OF_PAGES && storage_address==0){
         if(page_addresses_on_storage[counter][0] == replace_pde_offset && page_addresses_on_storage[counter][1] == replace_pte_offset){
             //Page was already on Storage
             storage_address = page_addresses_on_storage[counter][2];
