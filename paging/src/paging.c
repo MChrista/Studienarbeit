@@ -154,7 +154,6 @@ isPresentBit(int pde_offset, int pte_offset) {
 
 uint32_t
 getAddressOfPageToReplace() {
-    int pte,pde;
     /* Implementation of NRU
      * 
     A=0, M=0 (nicht gelesen, nicht verändert)
@@ -217,49 +216,11 @@ getAddressOfPageToReplace() {
     temp_page_table = (uint32_t *) (page_directory[counter_pde] & 0xFFFFF000);
 #endif
     uint32_t replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
-
-    //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
-    //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
     
-    //Remove old page
-    //Search for entry in page_addresses_on_storage
-    
-    int counter = 0;
-    uint32_t storage_address = 0;
-    while(counter < maxNumberOfPages && storage_address==0){
-        if(page_addresses_on_storage[counter][0] == replace_pde_offset && page_addresses_on_storage[counter][1] == replace_pte_offset){
-            //Page was already on Storage
-            storage_address = page_addresses_on_storage[counter][2];
-            page_addresses_on_storage[counter][0] = pde;
-            page_addresses_on_storage[counter][1] = pte;
-            page_addresses_on_storage[counter][2] = 0;
-        }
-    }
-    if((*(temp_page_table + replace_pte_offset) & 0x40) == 0x40){ //If Dirty Bit is set
-        //Copy page to storage
-    }
-    if((*(temp_page_table + replace_pte_offset) & 0x400) == 0x400){ //If page is already present on storage
-        
-    }
-    
-    *(temp_page_table + replace_pte_offset) &= 0x0;
-    setPresentBit(replace_pde_offset, replace_pte_offset, 0);
-
-    /*Map new page
-     * Page Table is already present
-     */
-    uint32_t *page_table;
-#ifdef __DHBW_KERNEL__
-    page_table = (uint32_t *) ((page_directory[pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
-#else
-    page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
-#endif
-    *(page_table + pte) = (replace_phy_address + RW_BIT + PRESENT_BIT);
-    ret_info.physical_address = replace_phy_address & 0xFFFFF000;
-    ret_info.flags = *(page_table + pte) & 0x00000FFF;
-    //Now set Present Bit in bitmap matrix
-    setPresentBit(pde, pte, 1);
-    return 1;
+    uint32_t virtAddr = 0;
+    virtAddr |= replace_pde_offset << 22;
+    virtAddr |= replace_pte_offset << 12;
+    return virtAddr;
 }
 
 int getClassOfPage(int flags) {
