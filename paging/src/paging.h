@@ -17,3 +17,6 @@ int setPresentBit(int , int , int);
 int isPresentBit(int, int);
 int replacePage(int, int );
 int getClassOfPage(int);
+void loadPageFromStorage(uint32_t , uint32_t );
+int isPresentBit(int , int );
+void getPageFrame(uint32_t *,int ,int );
