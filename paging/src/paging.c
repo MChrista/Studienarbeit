@@ -24,10 +24,13 @@ int startaddress = 0x200000; //Startaddress for Physical Memory
 int page_counter = 0;
 
 int startOfStorage = 0x300000;
+int storagePageCounter = 0;
 
 
 const int maxNumberOfPages = 4; //Maximum Number of Pages
 uint32_t page_bitfield[1024][32];
+uint32_t page_addresses_on_storage[4][3];
+
 
 
 //Page replace parameters
@@ -61,32 +64,10 @@ struct page_fault_result * pageFault(int virtualAddr) {
     ret_info.fault_address = virtualAddr;
 
     if ((page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT) { //if present Bit is set
-
         uint32_t *page_table;
         page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000);
-        /*
-                if(IS_PRESENT(*(page_table + page_table_offset) == 0)){
-                    printf("Makro sagt present\n");
-                }else{
-                    printf("Makro sagt nicht present\n");
-                }
-         */
         if ((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT) { //if present Bit is not set
-            if (page_counter < maxNumberOfPages) {
-                //=  *(page_table + page_table_offset) & 0xFFFFF000;
-
-                uint32_t next_address = (uint32_t) (startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
-                *(page_table + page_table_offset) = next_address;
-                setPresentBit(page_dir_offset, page_table_offset, 1);
-                //printf("PTE: %i PDE: %i Physical Address of Page: %x\n\n",page_dir_offset,page_table_offset, next_address);
-                ret_info.physical_address = next_address & 0xFFFFF000;
-                ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
-                // Get next free Page and return new virtual Adress
-            } else {
-                //printf("Replace Page\n"); 
-                replacePage(page_dir_offset, page_table_offset);
-
-            }
+            getPageFrame(page_table,page_dir_offset,page_table_offset);
         } else {
             //printf("There is no Page Fault\n\n");
             ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
@@ -99,6 +80,38 @@ struct page_fault_result * pageFault(int virtualAddr) {
         ret_info.flags = 0x0;
     }
     return &ret_info;
+}
+
+void 
+getPageFrame(uint32_t *page_table,int pde ,int pte){
+    if (page_counter < maxNumberOfPages) {
+        uint32_t next_address = (uint32_t) (startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT);
+        //If Storage bit is set
+        if((*(page_table + pte) & 0x400) == 0x400){
+            page_addresses_on_storage[page_counter-1][0] = pde;
+            page_addresses_on_storage[page_counter-1][0] = pte;
+            page_addresses_on_storage[page_counter-1][0] = *(page_table + pte) & 0xFFFFF000;
+            loadPageFromStorage(next_address, *(page_table + pte) & 0xFFFFF000);
+        }
+        *(page_table + pte) = next_address;
+        setPresentBit(pde, pte, 1);
+        ret_info.physical_address = next_address & 0xFFFFF000;
+        ret_info.flags = *(page_table + pte) & 0x00000FFF;
+    } else {
+        //printf("Replace Page\n"); 
+        replacePage(pde, pte);
+
+    }
+}
+
+void
+loadPageFromStorage(uint32_t memory_address, uint32_t storage_address){
+    
+}
+
+void
+savePageToStorage(uint32_t memory_address, uint32_t storage_address){
+    
 }
 
 int
@@ -148,7 +161,7 @@ replacePage(int pde, int pte) {
     counter_pte = replace_pte_offset;
     class = 4; //Start at highest class + 1 to fetch the first page with class 3 if all pages have class 3
 
-    printf("Start to search new replacing page%d %d\n", start_pde, start_pte);
+    //printf("Start to search new replacing page%d %d\n", start_pde, start_pte);
     do {
 
         counter_pte++;
@@ -163,7 +176,7 @@ replacePage(int pde, int pte) {
 
         }
         if (isPresentBit(counter_pde, counter_pte)) {
-            printf("Found page at %d %d\n", counter_pde, counter_pte);
+            //printf("Found page at %d %d\n", counter_pde, counter_pte);
 #ifdef __DHBW_KERNEL__
             temp_page_table = (uint32_t *) ((page_directory[counter_pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
 #else
@@ -171,8 +184,8 @@ replacePage(int pde, int pte) {
 #endif
             flags = *(temp_page_table + counter_pte) & 0xFFF;
             tmp_class = getClassOfPage(flags);
-            printf("Flags %i\n", flags);
-            printf("Class of Page %i\n", tmp_class);
+            //printf("Flags %i\n", flags);
+            //printf("Class of Page %i\n", tmp_class);
             if (class > tmp_class) {
                 class = tmp_class;
                 replace_pde_offset = counter_pde;
@@ -183,7 +196,7 @@ replacePage(int pde, int pte) {
     } while ((counter_pde != start_pde || counter_pte != start_pte) && (class != 0)); //Until walk through bitfield is complete
 
 
-    printf("Replace Offsets are %d %d\n", replace_pde_offset, replace_pte_offset);
+    //printf("Replace Offsets are %d %d\n", replace_pde_offset, replace_pte_offset);
     //Get page table, in which is the page you want to replace and get the physical address of this page
 
 #ifdef __DHBW_KERNEL__
@@ -195,7 +208,28 @@ replacePage(int pde, int pte) {
 
     //printf("PTE: %i PDE: %i Physical Address of Page: %x\n",page_dir_offset,page_table_offset, replace_phy_address);
     //printf("Check Bitfield Offsets: %i\n", isPresentBit(replace_pde_offset,replace_pte_offset));
+    
     //Remove old page
+    //Search for entry in page_addresses_on_storage
+    /*
+    int counter = 0;
+    uint32_t storage_address = 0;
+    while(counter < maxNumberOfPages && storage_address==0){
+        if(page_addresses_on_storage[counter][0] == replace_pde_offset && page_addresses_on_storage[counter][1] == replace_pte_offset){
+            //Page was already on Storage
+            storage_address = page_addresses_on_storage[counter][2];
+            page_addresses_on_storage[counter][0] = pde;
+            page_addresses_on_storage[counter][1] = pte;
+            page_addresses_on_storage[counter][2] = 0;
+        }
+    }
+    if((*(temp_page_table + replace_pte_offset) & 0x40) == 0x40){ //If Dirty Bit is set
+        //Copy page to storage
+    }
+    if((*(temp_page_table + replace_pte_offset) & 0x400) == 0x400){ //If page is already present on storage
+        
+    }
+    */
     *(temp_page_table + replace_pte_offset) &= 0x0;
     setPresentBit(replace_pde_offset, replace_pte_offset, 0);
 
