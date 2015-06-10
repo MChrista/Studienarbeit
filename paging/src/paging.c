@@ -117,7 +117,9 @@ getPageFrame(){
     } else {
         //printf("Replace Page\n"); 
         uint32_t virtAddr = getAddressOfPageToReplace();
+        //printf("Virtual Address is %08X\n", virtAddr);
         uint32_t memoryAddress = swap(virtAddr);
+        //printf("Memory Address is %08X\n", memoryAddress);
         return memoryAddress;
 
     }
@@ -125,12 +127,12 @@ getPageFrame(){
 
 void
 loadPageFromStorage(uint32_t memory_address, uint32_t storage_address){
-    
+    printf("Loading %08X to %08X\n", storage_address, memory_address);
 }
 
 void
 savePageToStorage(uint32_t memory_address, uint32_t storage_address){
-    
+    printf("Saving %08X to %08X\n", memory_address, storage_address);
 }
 
 int indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte)
@@ -154,13 +156,15 @@ uint32_t swap(uint32_t virtAddr){
     
     // Compute Parameters
     int pde = PDE(virtAddr);
-    int pte = PDE(virtAddr);
+    int pte = PTE(virtAddr);
     
+    //printf("Swap:\nPDE: %x PTE: %x\n",pde,pte);
     uint32_t   storageAddr;
-    uint32_t * page_table = page_directory[pde];
+    uint32_t * page_table = (uint32_t *)(page_directory[pde] & 0xFFFFF000);
     uint32_t   memoryAddr = page_table[pte] & 0xFFFFF000;
     int        flags      = page_table[pte] & 0xFFF;
     
+    //printf("Memory Address is %08X\n\n", memoryAddr);
     int pageAddrOnStorageIndex = indexOfDiskAddrByPdePte(pde, pte);
     
     // Check if page to swap is on disk
