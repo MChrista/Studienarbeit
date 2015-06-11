@@ -6,6 +6,12 @@
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
 #define USER_MODE_BIT 4
+#define PRESENT_ON_STORAGE 0x400
+#define DIRTY 0x040
+#define MAX_NUMBER_OF_PAGES 4
+
+#define PDE(addr) ((addr & 0xFFC00000) >> 22)
+#define PTE(addr) ((addr & 0x003FF000) >> 12)
 
 #ifdef __DHBW_KERNEL__
 // Linear address of data segment, defined in ldscript
@@ -22,11 +28,18 @@ unsigned long page_directory[1024] __attribute__((aligned(0x1000)));
 unsigned long kernel_page_table[1024] __attribute__((aligned(0x1000)));
 unsigned long programm_page_table[1024] __attribute__((aligned(0x1000)));
 unsigned long stack_page_table[1024] __attribute__((aligned(0x1000)));
+
 //General Parameters
 int startaddress = 0x20000; //Startaddress for Physical Memory
 int page_counter = 0;
-const int maxNumberOfPages = 4; //Maximum Number of Pages
+
+int startOfStorage = 0x300000;
+int storagePageCounter = 0;
+
 unsigned long page_bitfield[1024][32];
+unsigned long page_addresses_on_storage[MAX_NUMBER_OF_PAGES][3];
+unsigned long test;
+
 //Page replace parameters
 int replace_pde_offset = 0;
 int replace_pte_offset = 512;
@@ -42,10 +55,16 @@ typedef struct pg_struct {
 
 
 static pg_struct_t pg_struct;
-int setPresentBit(int pde_offset, int pte_offset, int bool);
-int isPresentBit(int pde_offset, int pte_offset);
+int setPresentBit(int, int, int);
+int isPresentBit(int, int);
 int replacePage(int, int);
 int getClassOfPage(int);
+int getClassOfPage(int);
+void loadPageFromStorage(unsigned long, unsigned long);
+unsigned long getAddressOfPageToReplace();
+int isPresentBit(int, int);
+unsigned long getPageFrame();
+unsigned long swap(unsigned long);
 
 pg_struct_t *
 pfhandler(unsigned long ft_addr) {
@@ -68,17 +87,25 @@ pfhandler(unsigned long ft_addr) {
 #endif
 
         if ((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT) { //if present Bit is not set
-            if (page_counter < maxNumberOfPages) {
-                unsigned long next_address = (unsigned long) (startaddress + page_counter++ * 0x1000 + PRESENT_BIT + RW_BIT + USER_MODE_BIT);
-                *(page_table + page_table_offset) = next_address;
-                setPresentBit(page_dir_offset, page_table_offset, 1);
-                pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
-                pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
-                // Get next free Page and return new virtual Adress
-            } else {
-                //Get physical address of page you want to replace
-                replacePage(page_dir_offset, page_table_offset);
+            unsigned long memoryAddress = getPageFrame();
+
+            int counter = memoryAddress & 0xFFF;
+            memoryAddress &= 0xFFFFF000;
+            page_addresses_on_storage[counter][0] = page_dir_offset;
+            page_addresses_on_storage[counter][1] = page_table_offset;
+
+            if ((*(page_table + page_table_offset) & 0x400) == 0x400) {
+                page_addresses_on_storage[counter][2] = *(page_table + page_table_offset) & 0xFFFFF000;
+                loadPageFromStorage(memoryAddress, *(page_table + page_table_offset) & 0xFFFFF000);
+                memoryAddress |= PRESENT_ON_STORAGE;
+
             }
+            memoryAddress = memoryAddress | PRESENT_BIT | RW_BIT;
+            *(page_table + page_table_offset) = memoryAddress;
+            setPresentBit(page_dir_offset, page_table_offset, 1);
+            pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
+            pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
+
         } else {
             //printf("There is no Page Fault\n\n");
             pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
@@ -91,6 +118,88 @@ pfhandler(unsigned long ft_addr) {
     }
     return &pg_struct;
 } /* end of pfhandler */
+
+unsigned long
+getPageFrame() {
+    if (page_counter < MAX_NUMBER_OF_PAGES) {
+        unsigned long next_address = (unsigned long) (startaddress + page_counter * 0x1000);
+        next_address |= page_counter;
+        page_counter++;
+        return next_address;
+    } else {
+        unsigned long virtAddr = getAddressOfPageToReplace();
+        unsigned long memoryAddress = swap(virtAddr);
+        return memoryAddress;
+
+    }
+}
+
+void
+loadPageFromStorage(unsigned long memory_address, unsigned long storage_address) {
+    test = memory_address + storage_address;
+}
+
+void
+savePageToStorage(unsigned long memory_address, unsigned long storage_address) {
+    test = memory_address + storage_address;
+}
+
+int indexOfDiskAddrByPdePte(unsigned long pde, unsigned long pte) {
+    for (int i = 0; i < MAX_NUMBER_OF_PAGES; i++) {
+        if (page_addresses_on_storage[i][0] == pde
+                && page_addresses_on_storage[i][1] == pte) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+unsigned long getFreeFrameOnDisk() {
+    return (unsigned long) (startOfStorage + storagePageCounter++ * 0x1000);
+}
+
+unsigned long swap(unsigned long virtAddr) {
+
+    // Compute Parameters
+    int pde = PDE(virtAddr);
+    int pte = PTE(virtAddr);
+
+    unsigned long storageAddr;
+#ifdef __DHBW_KERNEL__
+    unsigned long * page_table = (unsigned long *) ((page_directory[pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
+#else
+    unsigned long * page_table = (unsigned long *) (page_directory[pde] & 0xFFFFF000);
+#endif
+    unsigned long memoryAddr = page_table[pte] & 0xFFFFF000;
+    int flags = page_table[pte] & 0xFFF;
+
+    int pageAddrOnStorageIndex = indexOfDiskAddrByPdePte(pde, pte);
+
+    // Check if page to swap is on disk
+    if ((flags & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE) {
+        // Get address of page copy on disk
+        storageAddr = page_addresses_on_storage[pageAddrOnStorageIndex][2];
+
+        // Check if page was modified, only save it then
+        if ((flags & DIRTY) == DIRTY) {
+            // Overwrite copy on disk with modified page 
+            savePageToStorage(memoryAddr, storageAddr);
+        }
+    } else {
+        // Get free storage address to save page to
+        storageAddr = getFreeFrameOnDisk();
+        savePageToStorage(memoryAddr, storageAddr);
+    }
+
+    // Store disk address of page copy in its page table entry.
+    page_table[pte] = storageAddr | PRESENT_ON_STORAGE;
+
+    // Reset present bit
+    setPresentBit(pde, pte, 0);
+    page_table[pte] &= 0xFFFFFFFE;
+
+    return memoryAddr | pageAddrOnStorageIndex;
+}
 
 int
 setPresentBit(int pde_offset, int pte_offset, int bool) {
@@ -117,8 +226,15 @@ isPresentBit(int pde_offset, int pte_offset) {
     }
 }
 
-int
-replacePage(int pde, int pte) {
+unsigned long
+getAddressOfPageToReplace() {
+    /* Implementation of NRU
+     * 
+    A=0, M=0 (nicht gelesen, nicht verändert)
+    A=0, M=1 (nicht gelesen, aber verändert)
+    A=1, M=0 (gelesen, aber nicht verändert)
+    A=1, M=1 (gelesen und verändert)
+     */
     unsigned long *temp_page_table;
     int start_pde, start_pte, counter_pde, counter_pte, class, flags, tmp_class;
 
@@ -127,6 +243,7 @@ replacePage(int pde, int pte) {
     counter_pde = replace_pde_offset;
     counter_pte = replace_pte_offset;
     class = 4; //Start at highest class + 1 to fetch the first page with class 3 if all pages have class 3
+
     do {
 
         counter_pte++;
@@ -141,7 +258,6 @@ replacePage(int pde, int pte) {
 
         }
         if (isPresentBit(counter_pde, counter_pte)) {
-
 #ifdef __DHBW_KERNEL__
             temp_page_table = (unsigned long *) ((page_directory[counter_pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
 #else
@@ -149,49 +265,23 @@ replacePage(int pde, int pte) {
 #endif
             flags = *(temp_page_table + counter_pte) & 0xFFF;
             tmp_class = getClassOfPage(flags);
-            
-            // Delete access flags of page (second chance)
-            temp_page_table[counter_pte] = temp_page_table[counter_pte] & 0xFDF;
-            
+            *(temp_page_table + counter_pte) &= 0xFFFFFFDF; //Remove access bit
             if (class > tmp_class) {
                 class = tmp_class;
                 replace_pde_offset = counter_pde;
                 replace_pte_offset = counter_pte;
             }
         }
-        //printf("Bool of While %d\n",counter_pde != start_pde && counter_pte != start_pte);
     } while ((counter_pde != start_pde || counter_pte != start_pte) && (class != 0)); //Until walk through bitfield is complete
 
 
-    //printf("Replace Offsets are %d %d\n",replace_pde_offset,replace_pte_offset);            
+    //printf("Replace Offsets are %d %d\n", replace_pde_offset, replace_pte_offset);
     //Get page table, in which is the page you want to replace and get the physical address of this page
-#ifdef __DHBW_KERNEL__
-    temp_page_table = (unsigned long *) ((page_directory[replace_pde_offset] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
-#else
-    temp_page_table = (unsigned long *) (page_directory[replace_pde_offset] & 0xFFFFF000);
-#endif
-    unsigned long replace_phy_address = *(temp_page_table + replace_pte_offset) & 0xFFFFF000;
 
-
-    //Remove old page
-    *(temp_page_table + replace_pte_offset) &= 0x0;
-    setPresentBit(replace_pde_offset, replace_pte_offset, 0);
-
-    /*Map new page
-     * Page Table is already present
-     */
-    unsigned long *page_table;
-#ifdef __DHBW_KERNEL__
-    page_table = (unsigned long *) ((page_directory[pde] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
-#else
-    page_table = (unsigned long *) (page_directory[pde] & 0xFFFFF000);
-#endif
-    *(page_table + pte) = (replace_phy_address + RW_BIT + PRESENT_BIT + USER_MODE_BIT);
-    pg_struct.ph_addr = *(page_table + pte) & 0xFFFFF000;
-    pg_struct.flags = *(page_table + pte) & 0x00000FFF;
-    //Now set Present Bit in bitmap matrix
-    setPresentBit(pde, pte, 1);
-    return 1;
+    unsigned long virtAddr = 0;
+    virtAddr |= replace_pde_offset << 22;
+    virtAddr |= replace_pte_offset << 12;
+    return virtAddr;
 }
 
 int getClassOfPage(int flags) {
@@ -234,7 +324,7 @@ unsigned long* init_paging() {
         kernel_page_table[i] = (unsigned long) (i * 0x1000 + 3);
         setPresentBit(0, i, 1);
     }
-    *(page_directory + OFFSET_KERNEL_PT) = (unsigned long) kernel_page_table | PRESENT_BIT | RW_BIT ;
+    *(page_directory + OFFSET_KERNEL_PT) = (unsigned long) kernel_page_table | PRESENT_BIT | RW_BIT;
     *(page_directory + OFFSET_PROGRAMM_PT) = (unsigned long) programm_page_table | PRESENT_BIT | RW_BIT | USER_MODE_BIT;
     *(page_directory + OFFSET_STACK_PT) = (unsigned long) stack_page_table | PRESENT_BIT | RW_BIT | USER_MODE_BIT;
 
@@ -244,7 +334,6 @@ unsigned long* init_paging() {
     *(page_directory + OFFSET_STACK_PT) += (unsigned long) &LD_DATA_START;
 #endif
 
-    //printf("Address of page Directory %p\n",page_directory);
     return page_directory;
 }
 
