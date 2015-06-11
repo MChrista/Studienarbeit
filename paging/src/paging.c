@@ -267,7 +267,7 @@ getAddressOfPageToReplace() {
 #endif
             flags = *(temp_page_table + counter_pte) & 0xFFF;
             tmp_class = getClassOfPage(flags);
-            *(temp_page_table + counter_pte) = 0xFDF; //Remove access bit
+            *(temp_page_table + counter_pte) &= 0xFFFFFFDF; //Remove access bit
             //printf("Flags %i\n", flags);
             printf("Class of Page %i\n", tmp_class);
             if (class > tmp_class) {
