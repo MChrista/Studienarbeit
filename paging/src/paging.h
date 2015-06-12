@@ -9,6 +9,8 @@
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
 
+
+
 struct page_fault_result;
 
 struct page_fault_result * pageFault( int);
@@ -21,3 +23,5 @@ uint32_t getAddressOfPageToReplace();
 int isPresentBit(int , int );
 uint32_t getPageFrame();
 uint32_t swap(uint32_t virtAddr);
+void print_debug(char*);
+int getIndexOfFrameOnDisk(uint32_t);

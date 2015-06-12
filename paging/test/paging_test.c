@@ -14,7 +14,6 @@
 #define ACCESSED  0x00000020
 #define DIRTY     0x00000040
 
-
 struct page_fault_result {
     int fault_address;
     int pde;
@@ -26,7 +25,8 @@ struct page_fault_result {
 
 void testPageClass();
 
-void testPageClass(){
+void testPageClass() {
+    /*
     printf("Class of Page %d\n",getClassOfPage(0));
     printf("Class of Page %d\n",getClassOfPage(1));
     printf("Class of Page %d\n",getClassOfPage(2));
@@ -35,29 +35,29 @@ void testPageClass(){
     printf("Class of Page %d\n",getClassOfPage(96));
     printf("Class of Page %d\n",getClassOfPage(99));
     printf("Class of Page %d\n",getClassOfPage(67));
+     */
 }
 
 void testPageFault(int virtualAddr) {
     struct page_fault_result * pf_result;
     pf_result = pageFault(virtualAddr);
     printf("[PFRES] 0x%08X\t0x%03X\t0x%03X\t0x%03X\t\t0x%08X\t%03X\n",
-                pf_result->fault_address,
-                pf_result->pde,
-                pf_result->pte,
-                pf_result->offset,
-                pf_result->physical_address,
-                pf_result->flags
-                );
+            pf_result->fault_address,
+            pf_result->pde,
+            pf_result->pte,
+            pf_result->offset,
+            pf_result->physical_address,
+            pf_result->flags
+            );
 }
 
-void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory)
-{   
-    
-    uint32_t * page_table  = page_directory[PDE(virtualAddr)]&0xFFFFF000;
+void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory) {
+
+    uint32_t * page_table = (uint32_t *) (page_directory[PDE(virtualAddr)]&0xFFFFF000);
     int * physicalAddr = (int *) (page_table[PTE(virtualAddr)]&0xFFFFF000);
-    
+
     page_table[PTE(virtualAddr)] |= flags;
-    
+
 }
 
 void testPaging(int virtualAddr, uint32_t * page_directory) {
@@ -160,7 +160,7 @@ int main(int argc, char** argv) {
             testPageFault(testAddr);
         }
         printf("EOF");
- 
+
     } else {
         printf("No Testdata given. Using default.\n");
         testPageClass();
@@ -170,22 +170,25 @@ int main(int argc, char** argv) {
         testPageFault(0x08050000);
         testPageFault(0x08051000);
         printf("Flags:    ACCESSED,DIRTY\n");
-        setFlags(     0x08048000,  ACCESSED | DIRTY, pageDir);
-        testPageFault(0x08048000);   
-        printf("Flags:    Accesed\n");
-        setFlags(     0x08049000, ACCESSED | DIRTY, pageDir);
-        testPageFault(0x08049000);
-        printf("Flags:    Dirty\n");
-        setFlags(     0x08050000, ACCESSED | DIRTY, pageDir);
-        testPageFault(0x08050000);
-        //printf("Flags:    USER, ACCESSED, DIRTY\n");
-        setFlags(     0x08051000, ACCESSED | DIRTY, pageDir);
+        setFlags(0x08048000, ACCESSED | DIRTY, pageDir);
+        testPageFault(0x08048000);
+        printf("Flags:    ACCESSED,DIRTY\n");
+        setFlags(0x08051000, ACCESSED | DIRTY, pageDir);
         testPageFault(0x08051000);
-        testPageFault(0x08052000);
-        //printf("Flags:    ACCESSED,DIRTY\n");
-        setFlags(     0x08052000,  ACCESSED | DIRTY, pageDir);
         
+        
+        
+        testPageFault(0x08052000);
+        setFlags(0x08052000, ACCESSED | DIRTY, pageDir);
+        printf("Load Page from Storage again\n");
+        testPageFault(0x08049000);
+        printf("Only load storage address\n");
+        testPageFault(0x08050000);
+        //printf("Flags:    ACCESSED,DIRTY\n");
+        
+
         testPageFault(0x08053FFF);
+        testPageFault(0x08050000);
         //printf("Testing Bitfield\n");
         //testBitfield();
         printf("\nTESTING OVER\n\n");
