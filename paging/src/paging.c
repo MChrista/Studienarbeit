@@ -276,7 +276,7 @@ freeAllPages(){
     //For all present bits, do free page in Memory
     for(int pde=0; pde<1024; pde++){
         for(int pte=0; pte<1024;pte++){
-            if(isPresentBit(pde,pte) == PRESENT){
+            if(isPresentBit(pde,pte)){
                 freePageInMemory(pde,pte);
             }
         }
