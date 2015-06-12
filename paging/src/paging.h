@@ -25,3 +25,6 @@ uint32_t getPageFrame();
 uint32_t swap(uint32_t virtAddr);
 void print_debug(char*);
 int getIndexOfFrameOnDisk(uint32_t);
+int indexOfDiskAddrByPdePte(uint32_t,uint32_t);
+void freePageInMemory(int, int);
+void freeAllPages();

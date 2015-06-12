@@ -169,6 +169,11 @@ int main(int argc, char** argv) {
         testPageFault(0x08049000);
         testPageFault(0x08050000);
         testPageFault(0x08051000);
+        freeAllPages();
+        testPageFault(0x08048000);
+        testPageFault(0x08049000);
+        testPageFault(0x08050000);
+        testPageFault(0x08051000);
         printf("Flags:    ACCESSED,DIRTY\n");
         setFlags(0x08048000, ACCESSED | DIRTY, pageDir);
         testPageFault(0x08048000);
