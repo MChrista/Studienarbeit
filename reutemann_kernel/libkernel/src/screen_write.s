@@ -33,11 +33,27 @@ screen_write:
         cld
         mov     $0x07, %ah              # normal text attribute
 nxmchr: lodsb                           # fetch next character
+
+        cmp     $'\b', %al              # backpsace?
+        jne     no_bs
+        test    %dl, %dl
+        jz      advok
         push    %edx
+        # write character to UART
         mov     $UART_BASE+0, %dx       # UART Data i/o-port
         out     %al, %dx                # send character
         pop     %edx
-
+        dec     %dl
+        mov     $' ', %al
+        sub     $2, %edi
+        stosw
+        jmp     advok
+no_bs:
+        push    %edx
+        # write character to UART
+        mov     $UART_BASE+0, %dx       # UART Data i/o-port
+        out     %al, %dx                # send character
+        pop     %edx
         cmp     $'\n', %al              # newline?
         je      do_nl                   #   yes, do CR/LF
         cmp     $'\r', %al              # carriage return?

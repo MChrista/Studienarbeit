@@ -363,19 +363,28 @@ detect_memory:
         pop     %ax
         .endm
 #-----------------------------------------------------------------
+
 configure_16550_uart:
+        #----------------------------------------------------------
+        # initialize the UART for 115200 bps, 8-N-1
+        #----------------------------------------------------------
         out8    0x00, UART_BASE+1       # Interrupt Enable
-        out8    0x07, UART_BASE+2       # Fifo Control
-        out8    0x83, UART_BASE+3       # Line Control
+        out8    0x07, UART_BASE+2       # Fifo Control: FIFO enable & reset
+        out8    0x83, UART_BASE+3       # Line Control: DLAB
         out8    0x01, UART_BASE+0       # Divisor Latch LSB
         out8    0x00, UART_BASE+1       # Divisor Latch MSB
-        out8    0x03, UART_BASE+3       # Line Control
-        out8    0x03, UART_BASE+4       # Modem Control
+        out8    0x03, UART_BASE+3       # Line Control: 8N1
+        out8    0x03, UART_BASE+4       # Modem Control: DTR/RTS
 
         in8     UART_BASE+6             # Modem Status
         in8     UART_BASE+5             # Line Status
         in8     UART_BASE+0             # Received Data
         in8     UART_BASE+2             # Interrupt Identification
+
+        # transmit null-byte (to initiate UART interrupts)
+        mov     $UART_BASE, %dx
+        mov     $0, %al
+        out     %al, %dx
 
         ret
 

@@ -174,7 +174,7 @@ remap_isr_pm:
         mov     $0x02, %al              # write ICW3
         out     %al, $0xA1              #  to PIC #2
         mov     $0x01, %al              # write ICW4
-        out     %al, $0xA1              #  to PIC #3
+        out     %al, $0xA1              #  to PIC #2
 
         sti                             # allow interrupts again
 

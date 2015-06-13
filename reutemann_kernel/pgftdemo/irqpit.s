@@ -22,6 +22,8 @@
 #    +=================+
 #
 #-----------------------------------------------------------------
+
+#-----------------------------------------------------------------
 # EQUATES for timing constants and for ROM-BIOS address offsets
 #-----------------------------------------------------------------
         .equ    HOURS24, 0x180000       # number of ticks-per-day
@@ -32,6 +34,16 @@
         .equ    SECS_PER_MIN, 60        # seconds per minute
         .equ    SECS_PER_HOUR, 60*SECS_PER_MIN # seconds per hour
         .equ    SECS_PER_DAY, 24*SECS_PER_HOUR # seconds per day
+
+#-----------------------------------------------------------------
+# S E C T I O N   D A T A
+#-----------------------------------------------------------------
+        .section    .data
+
+prevticks: .long   0
+
+#-----------------------------------------------------------------
+# S E C T I O N   T E X T
 #-----------------------------------------------------------------
         .section        .text
         .code32
@@ -74,9 +86,12 @@ irqPIT:
         sub     %ecx, %edx      # CF=1 if 2*rem < divisor
         cmc                     # CF=1 if 2*rem >= divisor
         adc     $0, %eax        # ++EAX if 2+rem >= divisor
-
+.Lcheckticks:
+        cmp     %eax, prevticks
+        je      .Lskipupdate
+        mov     %eax, prevticks
         incl    ticks
-
+.Lskipupdate:
         leave
         ret
 

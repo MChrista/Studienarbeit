@@ -14,7 +14,7 @@ LDSCRIPT    = ldscript
 PROG        = pgftdemo
 
 TARGETS     = $(PROG).flp
-OBJS        = $(PROG).o pfhandler.o paging.o isrpfe.o irqpit.o
+OBJS        = $(PROG).o pfhandler.o paging.o isrpfe.o irqpit.o kgetc.o kgets.o monitor.o
 
 .PHONY: all
 .SECONDARY:
