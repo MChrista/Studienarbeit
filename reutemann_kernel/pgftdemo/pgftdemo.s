@@ -99,32 +99,6 @@ pgdiraddr:
 
 rwchar: .ascii  "RW"
 
-<<<<<<< HEAD
-        #----------------------------------------------------------
-        # output string for linear address we attempt to access
-        #----------------------------------------------------------
-addrmsg:.ascii  "________   "
-pgflags:.ascii  "____\n"
-        .equ    addrmsg_len, (.-addrmsg)
-
-        #----------------------------------------------------------
-        # address samples
-        #
-        # NOTE: bit 31 is used to indicate write access
-        #----------------------------------------------------------
-samples:#.long   0x00010000, 0x000100ff, 0x00020000, 0x00020abc
-        #.long   0x000B8000, 0x000110ff, 0x08048000, 0x08048000
-        #.long   0x08051c00, 0x08050abc, 0x60000000, 0x08048fff
-
-        .long   0x08080000, 0x08048123, 0x08049321, 0x08049004
-        .long   0x080a0fff, 0x08049321, 0x08049004, 0x08050abc
-        .long   0x880a0fff, 0x880a0fff, 0x880a0004, 0x88048FFF
-        .long   0x98050abc
-
-        .long   0x00000000
-
-=======
->>>>>>> hwpaging
 oldesp: .long   0x00000000
 
 #==================================================================
