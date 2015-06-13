@@ -10,24 +10,29 @@
 #                 Byte 0
 #                      V
 #    +-----------------+
-#    |     EFLAGS      |  +64
+#    |     EFLAGS      |  +76
 #    +-----------------+
-#    |       CS        |  +60
+#    |       CS        |  +72
 #    +-----------------+
-#    |       EIP       |  +56
+#    |       EIP       |  +68
 #    +-----------------+
-#    |    Error Code   |  +52
+#    |    Error Code   |  +64
 #    +-----------------+
-#    |      INT ID     |  +48
+#    |      INT ID     |  +60
 #    +-----------------+
 #    |   General Regs  |
-#    | EAX ECX EDX EBX |  +32
-#    | ESP EBP ESI EDI |  +16
+#    | EAX ECX EDX EBX |  +44
+#    | ESP EBP ESI EDI |  +28
 #    +-----------------+
 #    |  Segment  Regs  |
-#    |   DS ES FS GS   |  <-- ebp
+#    |   DS ES FS GS   |  +12
 #    +=================+
-#
+#    |  Int Stack Ptr  |   +8
+#    +-----------------+
+#    |  Return Address |   +4
+#    +-----------------+
+#    |       EBP       |  <-- ebp
+#    +-----------------+
 #-----------------------------------------------------------------
 
 #-----------------------------------------------------------------
@@ -45,6 +50,9 @@ pgphaddr:
         .ascii  "________\n"
         .equ    pgftmsg_len, (.-pgftmsg)
 
+        .align  4
+pgftcnt:.long   0   # counts how many page faults have occured
+
 #-----------------------------------------------------------------
 # S E C T I O N   T E X T
 #-----------------------------------------------------------------
@@ -58,29 +66,22 @@ pgphaddr:
         .align   16
 #------------------------------------------------------------------
 isrPFE:
-        #----------------------------------------------------------
-        # push interrupt id onto stack for register/stack dump
-        # in case page fault cannot be resolved
-        # 14: Page Fault Exception (With Error Code!)
-        #----------------------------------------------------------
-        pushl   $14
-
         #-----------------------------------------------------------
-        # push general-purpose and all data segment registers onto
-        # stack in order to preserve their value and also for display
+        # setup stack frame access via ebp and use edx to access
+        # caller stack frame
         #-----------------------------------------------------------
-        pushal
-        pushl   %ds
-        pushl   %es
-        pushl   %fs
-        pushl   %gs
-        mov     %esp, %ebp              # store current stack pointer
+        enter   $0, $0
 
         #----------------------------------------------------------
         # setup segment registers
         #----------------------------------------------------------
         mov     $privDS, %ax
         mov     %ax, %ds
+
+        #----------------------------------------------------------
+        # update page fault counter
+        #----------------------------------------------------------
+        incl    (pgftcnt)
 
         mov     %cr2, %eax              # faulting address
         lea     pgftaddr, %edi
@@ -91,6 +92,7 @@ isrPFE:
         pushl   %eax
         call    pfhandler
         add     $4, %esp
+
         mov     %eax, %ebx
         mov     16(%ebx), %eax          # get physical address
         lea     pgphaddr, %edi
@@ -107,25 +109,25 @@ isrPFE:
         # resolved
         #----------------------------------------------------------
         cmpl    $0xffffffff, 16(%ebx)
-        jne     pfe_exit
+        jne     .Lpfe_exit
 
         #----------------------------------------------------------
         # write the faulting address into the EAX value on the stack
         #----------------------------------------------------------
         mov     %cr2, %eax
-        mov     %eax, 44(%ebp)
+        mov     %eax, 56(%ebp)
         #----------------------------------------------------------
         # print register values
         #----------------------------------------------------------
         pushl   $1<<11+1<<13+1<<14       # highlight some registers
-        pushl   $50
+        pushl   $50                      # text column
         pushl   $0x9e7070
         pushl   $INT_NUM-2
         pushl   $0
         pushl   $intname
-        pushl   %ebp
+        lea     12(%ebp), %eax
+        pushl   %eax
         call    print_stacktrace
-        add     $7*4, %esp
 
         #----------------------------------------------------------
         # modify the interrupt return address on the stack in order
@@ -133,22 +135,13 @@ isrPFE:
         # and jump to a different code location instead
         #----------------------------------------------------------
         lea     pfcontinue, %eax
-        mov     %eax, 56(%ebp)
+        mov     %eax, 68(%ebp)
 
-pfe_exit:
-        #----------------------------------------------------------
-        # restore the values to the registers we've modified here
-        #----------------------------------------------------------
-        popl    %gs
-        popl    %fs
-        popl    %es
-        popl    %ds
-        popal
-
-        #----------------------------------------------------------
-        # remove interrupt id and error code from stack
-        #----------------------------------------------------------
-        add     $8, %esp
-
-        iret
+.Lpfe_exit:
+        #-----------------------------------------------------------
+        # erase local stack frame and reestablish original stack
+        # pointer. Finally, return to caller.
+        #-----------------------------------------------------------
+        leave
+        ret
 

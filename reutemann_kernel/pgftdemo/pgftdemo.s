@@ -4,6 +4,44 @@
 #-----------------------------------------------------------------
 
 
+#-----------------------------------------------------------------
+# M A C R O S
+#-----------------------------------------------------------------
+    .macro  INSTALL_ISR id handler
+        pushl   $\handler               # push pointer to handler
+        pushl   $\id                    # push interrupt-ID
+        call    register_isr
+        add     $8, %esp
+    .endm
+
+    .macro  INSTALL_IRQ id handler
+        pushl   $\handler               # push pointer to handler
+        pushl   $\id+0x20               # push interrupt-ID
+        call    register_isr
+        add     $8, %esp
+    .endm
+
+
+#-----------------------------------------------------------------
+# C O N S T A N T S
+#-----------------------------------------------------------------
+        #----------------------------------------------------------
+        # linear address offset of data segment
+        #----------------------------------------------------------
+        .equ    DATA_START, 0x20000
+
+        #----------------------------------------------------------
+        # equates for ISRs
+        #----------------------------------------------------------
+        .equ    ISR_PFE_ID,     0x0E   # Page Fault Exception
+
+        #----------------------------------------------------------
+        # equates for IRQs
+        #----------------------------------------------------------
+        .equ    IRQ_PIT_ID,     0x00
+        .equ    IRQ_UART_ID,    0x04
+
+
 #==================================================================
 # S I G N A T U R E
 #==================================================================
@@ -21,7 +59,6 @@ progname:
 
         .section        .data
 
-        .equ    DATA_START, 0x20000
 
 #------------------------------------------------------------------
 # G L O B A L   D E S C R I P T O R   T A B L E
@@ -48,33 +85,7 @@ regGDT: .word   limGDT
 #------------------------------------------------------------------
 # I N T E R R U P T   D E S C R I P T O R   T A B L E
 #------------------------------------------------------------------
-        .align  16
-        .global theIDT
-        #----------------------------------------------------------
-theIDT: # allocate 256 gate-descriptors
-        #----------------------------------------------------------
-        .quad   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-        #----------------------------------------------------------
-        # General Protection Exception (0x0D) gate descriptor
-        #----------------------------------------------------------
-        .word   isrGPF, privCS, 0x8E00, 0x0000
-        #----------------------------------------------------------
-        # Page Fault Exception (0x0E) gate descriptor
-        .word   isrPFE, privCS, 0x8E00, 0x0000
-        #----------------------------------------------------------
-        # allocate free space for the remaining unused descriptors
-        #----------------------------------------------------------
-        .zero   256*8 - (.-theIDT)
-        .equ    limIDT, (.-theIDT)-1    # this IDT's segment_limit
-
-        #----------------------------------------------------------
-        # image for IDTR register
-        #----------------------------------------------------------
-        .align  16
-        .global regIDT
-regIDT: .word   limIDT
-        .long   theIDT+DATA_START       # create linear address
-
+        # IDT is defined in isr.o in libkernel library
 #------------------------------------------------------------------
 
         #----------------------------------------------------------
@@ -88,6 +99,7 @@ pgdiraddr:
 
 rwchar: .ascii  "RW"
 
+<<<<<<< HEAD
         #----------------------------------------------------------
         # output string for linear address we attempt to access
         #----------------------------------------------------------
@@ -111,6 +123,8 @@ samples:#.long   0x00010000, 0x000100ff, 0x00020000, 0x00020abc
 
         .long   0x00000000
 
+=======
+>>>>>>> hwpaging
 oldesp: .long   0x00000000
 
 #==================================================================
@@ -128,6 +142,7 @@ oldesp: .long   0x00000000
         .extern int_to_hex
         .extern screen_write
         .extern screen_sel_page
+        .extern run_monitor
 main:
         enter   $0, $0
         pushal
@@ -141,6 +156,19 @@ main:
         #   SS - Stack Segment
         #   ES - CGA Video Memory
         #----------------------------------------------------------
+
+        #----------------------------------------------------------
+        # install interrupt/exception handlers
+        #----------------------------------------------------------
+        INSTALL_IRQ IRQ_PIT_ID, irqPIT
+        #INSTALL_IRQ IRQ_UART_ID, irqUART
+        INSTALL_ISR ISR_PFE_ID, isrPFE
+
+        #----------------------------------------------------------
+        # reprogram PICs and enable hardware interrupts
+        #----------------------------------------------------------
+        call    remap_isr_pm
+        sti
 
         #----------------------------------------------------------
         # initialise multi-page console
@@ -177,59 +205,11 @@ main:
         mov     $linDS, %ax
         mov     %ax, %gs
 
-        #----------------------------------------------------------
-        # read address samples from array
-        # end of array is indicated by zero address
-        #----------------------------------------------------------
-        xor     %ecx, %ecx
-read_samples:
-        mov     samples(,%ecx,4), %eax
-        test    %eax, %eax
-        jz      read_done
-        push    %ecx                    # save array index
-        push    %eax                    # save sample address
-
-        #----------------------------------------------------------
-        # convert and print the linear address in EAX
-        #----------------------------------------------------------
-        mov     %eax, %edx
-        shr     $31, %edx
-        mov     rwchar(%edx), %dl
-        mov     %dl, addrmsg+9
-        and     $0x7fffffff, %eax       # mask out MSB
-        lea     addrmsg, %edi           # pointer to output string
-        mov     $8, %ecx                # number of output digits
-        call    int_to_hex
-
-        call    get_pg_flags
-        mov     %eax, pgflags
-
-        lea     addrmsg, %esi           # message-offset
-        mov     $addrmsg_len, %ecx      # message-length
-        call    screen_write
-
-        #----------------------------------------------------------
-        # now try to access the address
-        #----------------------------------------------------------
-        pop     %eax                    # restore sample address
-        test    $0x80000000, %eax
-        jnz     do_write
-        and     $0x7fffffff, %eax       # mask out MSB
-        mov     %gs:(%eax), %ebx        # read access
-        jmp     skip_write
-do_write:
-        and     $0x7fffffff, %eax       # mask out MSB
-        notl    %gs:(%eax)              # write access
-skip_write:
-        popl    %ecx                    # restore array index
-        inc     %ecx
-        jmp     read_samples
-read_done:
-
         .type   pfcontinue, @function
         .global pfcontinue
 pfcontinue:
         mov     oldesp, %esp      # restore stack pointer
+        call    run_monitor
 
         #----------------------------------------------------------
         # in order to succesfully go back to the boot loader we
@@ -237,71 +217,24 @@ pfcontinue:
         #----------------------------------------------------------
         call    disable_paging
 
+        #-----------------------------------------------------------
+        # disable hardware interrupts
+        #-----------------------------------------------------------
+        cli
+
+        #-----------------------------------------------------------
+        # load appropriate ring0 data segment descriptor
+        #-----------------------------------------------------------
+        mov     $privDS, %ax
+        mov     %ax, %ds
+
+        #-----------------------------------------------------------
+        # reprogram PICs to their original setting
+        #-----------------------------------------------------------
+        call    remap_isr_rm
+
         pop     %gs
         popal
-        leave
-        ret
-
-#------------------------------------------------------------------
-# read the paging flags for the given linear address
-#       %eax (in): linear address
-#
-# return: flags in %eax
-#------------------------------------------------------------------
-get_pg_flags:
-        enter   $4, $0
-        push    %edx
-        push    %esi
-
-        mov     %eax, %edx
-        mov     %cr3, %esi        # linear page directory address
-
-        # calculate segmented page table address
-        shr     $22, %edx            # page directory entry
-        sub     $LD_DATA_START, %esi # segmented page directory address
-        mov     (%esi,%edx,4), %esi  # linear address of page table
-        test    $1, %esi             # page table present?
-        jz      table_not_mapped     # yes, there is no table mapped
-
-        sub     $LD_DATA_START, %esi # segmented page table address
-        and     $0xfffff000, %esi
-        mov     %eax, %edx
-        shr     $12, %edx            # page table entry
-        and     $0x3ff, %edx
-        lea     (%esi,%edx,4), %esi
-        mov     (%esi), %edx         # linear address of page
-        and     $0xfff, %edx
-        mov     $0x2e202020, %eax
-        test    $1, %edx             # check 'present' bit
-        jz      get_pg_flags_end
-        mov     $'P', %al
-        shl     $8, %eax
-        mov     $'R', %al
-        test    $2, %edx             # check 'read/write' bit
-        jz      read_only
-        mov     $'W', %al
-read_only:
-        shl     $8, %eax
-        mov     $'a', %al
-        test    $1<<5, %edx          # check 'accessed' bit
-        jz      not_accessed
-        mov     $'A', %al
-        xorl    $1<<5, (%esi)        # flip 'accessed' bit
-not_accessed:
-        shl     $8, %eax
-        mov     $'d', %al
-        test    $1<<6, %edx          # check 'dirty' bit
-        jz      get_pg_flags_end
-        mov     $'D', %al
-        jmp     get_pg_flags_end
-
-table_not_mapped:
-        mov     $0x20202020, %eax
-
-get_pg_flags_end:
-
-        pop     %esi
-        pop     %edx
         leave
         ret
 
