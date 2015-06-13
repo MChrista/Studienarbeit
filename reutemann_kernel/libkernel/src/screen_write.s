@@ -1,4 +1,6 @@
 
+        .equ    UART_BASE, 0x03F8       # base i/o-port for UART
+
         .extern screen_scrollup
         .extern screen_get_pos
         .extern screen_set_cursor
@@ -31,6 +33,10 @@ screen_write:
         cld
         mov     $0x07, %ah              # normal text attribute
 nxmchr: lodsb                           # fetch next character
+        push    %edx
+        mov     $UART_BASE+0, %dx       # UART Data i/o-port
+        out     %al, %dx                # send character
+        pop     %edx
 
         cmp     $'\n', %al              # newline?
         je      do_nl                   #   yes, do CR/LF

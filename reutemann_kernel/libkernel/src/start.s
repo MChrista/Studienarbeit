@@ -112,6 +112,7 @@ _start:
         call    detect_memory
 
         call    read_cmos_rtc
+        call    configure_16550_uart
 
         #----------------------------------------------------------
         # enable protected mode
@@ -340,6 +341,42 @@ detect_memory:
 .Lerr:
         popa
         leave
+        ret
+
+.equ    UART_BASE, 0x03F8       # base i/o-port for UART
+
+#-----------------------------------------------------------------
+        .macro  in8     port
+        push    %dx
+        mov     $\port, %dx
+        in      %dx, %al
+        pop     %dx
+        .endm
+#-----------------------------------------------------------------
+        .macro  out8    data, port
+        push    %ax
+        push    %dx
+        mov     $\port, %dx
+        mov     $\data, %al
+        out     %al, %dx
+        pop     %dx
+        pop     %ax
+        .endm
+#-----------------------------------------------------------------
+configure_16550_uart:
+        out8    0x00, UART_BASE+1       # Interrupt Enable
+        out8    0x07, UART_BASE+2       # Fifo Control
+        out8    0x83, UART_BASE+3       # Line Control
+        out8    0x01, UART_BASE+0       # Divisor Latch LSB
+        out8    0x00, UART_BASE+1       # Divisor Latch MSB
+        out8    0x03, UART_BASE+3       # Line Control
+        out8    0x03, UART_BASE+4       # Modem Control
+
+        in8     UART_BASE+6             # Modem Status
+        in8     UART_BASE+5             # Line Status
+        in8     UART_BASE+0             # Received Data
+        in8     UART_BASE+2             # Interrupt Identification
+
         ret
 
 
