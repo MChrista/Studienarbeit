@@ -11,14 +11,14 @@
 
 
 
-struct page_fault_result;
+struct pg_struct_t;
 
-struct page_fault_result * pageFault( int);
+struct pg_struct_t * pageFault( int);
 uint32_t* init_paging();
 int setPresentBit(int , int , int);
 int isPresentBit(int, int);
 int getClassOfPage(int);
-void loadPageFromStorage(uint32_t , uint32_t );
+void copyPage(uint32_t , uint32_t );
 uint32_t getAddressOfPageToReplace();
 int isPresentBit(int , int );
 uint32_t getPageFrame();

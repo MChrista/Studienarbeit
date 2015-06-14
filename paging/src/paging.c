@@ -49,39 +49,43 @@ int replace_pte_offset = 512;
 uint32_t page_bitfield[1024][32];
 
 struct storageEntry {
-    short pde;
-    short pte;
+    unsigned short pde;
+    unsigned short pte;
     uint32_t storageAddress;
 };
 
 struct storageEntry storageBitfield[MAX_NUMBER_OF_STORGAE_PAGES];
 
-struct page_fault_result {
-    int fault_address;
+struct pg_struct_t {
+    int ft_addr;
     int pde;
     int pte;
-    int offset;
-    int physical_address;
+    int off;
+    int ph_addr;
     int flags;
 };
 
-struct page_fault_result ret_info;
+struct pg_struct_t pg_struct;
 
-struct page_fault_result * pageFault(int virtualAddr) {
+struct pg_struct_t * pageFault(int virtualAddr) {
 
     int page_dir_offset = (virtualAddr >> 22) & 0x3FF;
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
 
-    ret_info.pde = page_dir_offset;
-    ret_info.pte = page_table_offset;
-    ret_info.offset = virtualAddr & 0x00000FFF;
-    ret_info.fault_address = virtualAddr;
+    pg_struct.pde = page_dir_offset;
+    pg_struct.pte = page_table_offset;
+    pg_struct.off = virtualAddr & 0x00000FFF;
+    pg_struct.ft_addr = virtualAddr;
 
     //If page table exists in page directory
     if ((page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT) {
 
         uint32_t *page_table;
+#ifdef __DHBW_KERNEL__
+        page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000) - (unsigned long) &LD_DATA_START);
+#else
         page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000);
+#endif
 
         //If page is not present in page table
         if ((*(page_table + page_table_offset) & PRESENT_BIT) != PRESENT_BIT) {
@@ -95,46 +99,46 @@ struct page_fault_result * pageFault(int virtualAddr) {
 
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE) {
-                int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset,page_table_offset);
-                printf("Index in storage bitfield %i\n",indexStorageBitfield);
+                int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
+                printf("Index in storage bitfield %i\n", indexStorageBitfield);
                 //Update page in storageBitfield TODO
                 //storageBitfield[indexStorageBitfield].pde = page_dir_offset;
                 //storageBitfield[indexStorageBitfield].pte = page_table_offset;
                 //storageBitfield[indexStorageBitfield].storageAddress = storageAddressOfPage;
                 copyPage(storageBitfield[indexStorageBitfield].storageAddress, memoryAddress);
 #ifdef __DHBW_KERNEL__
-                memset(storageBitfield[indexStorageBitfield].storageAddress,0,0x1000);
+                memset(storageBitfield[indexStorageBitfield].storageAddress, 0, 0x1000);
 #endif                
                 storageBitfield[indexStorageBitfield].pde = 0;
                 storageBitfield[indexStorageBitfield].pte = 0;
-                
-                
+
+
                 //memoryAddress |= PRESENT_ON_STORAGE;
             }
             //Set flags on memory address
             memoryAddress = memoryAddress | PRESENT_BIT | RW_BIT | USER_MODE;
             *(page_table + page_table_offset) = memoryAddress;
             setPresentBit(page_dir_offset, page_table_offset, 1);
-            
+
             //Set Bit in memory bitfield
             int indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
             physicalMemoryBitfield[indexInMemoryBitfield] = 1;
-            
-            ret_info.physical_address = memoryAddress & 0xFFFFF000;
-            ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
+
+            pg_struct.ft_addr = memoryAddress & 0xFFFFF000;
+            pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
 
         } else {
             //printf("There is no Page Fault\n\n");
-            ret_info.flags = *(page_table + page_table_offset) & 0x00000FFF;
-            ret_info.physical_address = *(page_table + page_table_offset) & 0xFFFFF000;
+            pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
+            pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
         }
 
     } else {
         //printf("Segmentation Fault. Page Table is not present.\n");
-        ret_info.physical_address = 0xFFFFFFFF;
-        ret_info.flags = 0x0;
+        pg_struct.ph_addr = 0xFFFFFFFF;
+        pg_struct.flags = 0x0;
     }
-    return &ret_info;
+    return &pg_struct;
 }
 
 uint32_t
@@ -144,15 +148,15 @@ getPageFrame() {
      * left 20 bits are memory address
      * right 12 bits are the index in storageBitfield
      */
-    
+
     //Maximum allowed pages in memory at actual time.
     int limit;
-    if(memoryPageCounter < MAX_NUMBER_OF_PAGES){
+    if (memoryPageCounter < MAX_NUMBER_OF_PAGES) {
         limit = memoryPageCounter;
-    }else{
+    } else {
         limit = MAX_NUMBER_OF_PAGES;
     }
-    
+
     for (int i = 0; i < limit; i++) {
         if (physicalMemoryBitfield[i] == 0) {
             uint32_t next_address = (uint32_t) (startaddress + i * 0x1000);
@@ -207,11 +211,17 @@ uint32_t swap(uint32_t virtAddr) {
 
     //printf("Swap:\nPDE: %x PTE: %x\n",pde,pte);
     uint32_t storageAddr;
+
+#ifdef __DHBW_KERNEL__
+    uint32_t * page_table = (uint32_t *) ((page_directory[pde] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
+#else
     uint32_t * page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
+#endif
+    
     uint32_t memoryAddr = page_table[pte] & 0xFFFFF000;
     int flags = page_table[pte] & 0xFFF;
 
-    
+
 
     // Check if page to swap is on disk
     if ((flags & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE) {
@@ -241,7 +251,7 @@ uint32_t swap(uint32_t virtAddr) {
 
     // Reset present bit
     setPresentBit(pde, pte, 0);
-    
+
     //Reset in memory Bitfield
     int indexInMemoryBitfield = (memoryAddr % startaddress) >> 12;
     printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
@@ -270,7 +280,7 @@ setPresentBit(int pde_offset, int pte_offset, int bool) {
 }
 
 void
-freePageInMemory(int pde, int pte){
+freePageInMemory(int pde, int pte) {
     uint32_t virtAddr = 0;
     virtAddr |= pde << 22;
     virtAddr |= pte << 12;
@@ -278,12 +288,14 @@ freePageInMemory(int pde, int pte){
 }
 
 void
-freeAllPages(){
+freeAllPages() {
     //For all present bits, do free page in Memory
-    for(int pde=0; pde<1024; pde++){
-        for(int pte=0; pte<1024;pte++){
-            if(isPresentBit(pde,pte)){
-                freePageInMemory(pde,pte);
+    for (int pde = 0; pde < 1024; pde++) {
+        for (int pte = 0; pte < 1024; pte++) {
+            if (isPresentBit(pde, pte)) {
+                if (!(pde == 0 && pte <= 512)) {
+                    freePageInMemory(pde, pte);
+                }
             }
         }
     }
@@ -430,15 +442,15 @@ init_paging() {
     //for the first MB
     for (int i = 0; i < 256; i++) {
 #ifdef __DHBW_KERNEL__
-        if(i >= (LD_IMAGE_START >> 12) && i < (LD_DATA_START >> 12)){
+        if (i >= (LD_IMAGE_START >> 12) && i < (LD_DATA_START >> 12)) {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT);
-        }else{
+        } else {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT + RW_BIT + USER_MODE);
         }
 #else
-        if(i >= (0x10000 >> 12) && i < (0x20000 >> 12)){
+        if (i >= (0x10000 >> 12) && i < (0x20000 >> 12)) {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT);
-        }else{
+        } else {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT + RW_BIT + USER_MODE);
         }
 #endif
