@@ -101,7 +101,14 @@ struct page_fault_result * pageFault(int virtualAddr) {
                 //storageBitfield[indexStorageBitfield].pde = page_dir_offset;
                 //storageBitfield[indexStorageBitfield].pte = page_table_offset;
                 //storageBitfield[indexStorageBitfield].storageAddress = storageAddressOfPage;
-                loadPageFromStorage(memoryAddress, storageBitfield[indexStorageBitfield].storageAddress);
+                copyPage(storageBitfield[indexStorageBitfield].storageAddress, memoryAddress);
+#ifdef __DHBW_KERNEL__
+                memset(storageBitfield[indexStorageBitfield].storageAddress,0,0x1000);
+#endif                
+                storageBitfield[indexStorageBitfield].pde = 0;
+                storageBitfield[indexStorageBitfield].pte = 0;
+                
+                
                 //memoryAddress |= PRESENT_ON_STORAGE;
             }
             //Set flags on memory address
@@ -160,14 +167,13 @@ getPageFrame() {
     return memoryAddress;
 }
 
-void
-loadPageFromStorage(uint32_t memory_address, uint32_t storage_address) {
-    printf("Loading %08X to %08X\n", storage_address, memory_address);
-}
+void copyPage(uint32_t src_address, uint32_t dst_address) {
+#ifdef __DHBW_KERNEL__
+    memcpy(dst_address, src_address, 0x1000);
+#else
+    printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
+#endif
 
-void
-savePageToStorage(uint32_t memory_address, uint32_t storage_address) {
-    printf("Saving %08X to %08X\n", memory_address, storage_address);
 }
 
 int indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte) {
@@ -217,7 +223,7 @@ uint32_t swap(uint32_t virtAddr) {
             // Get address of page copy on disk
             storageAddr = storageBitfield[pageAddrOnStorageIndex].storageAddress;
             // Overwrite copy on disk with modified page 
-            savePageToStorage(memoryAddr, storageAddr);
+            copyPage(memoryAddr, storageAddr);
         }
     } else {
         print_debug("\nSwap without page on storage\n");
@@ -227,7 +233,7 @@ uint32_t swap(uint32_t virtAddr) {
         storageBitfield[index].pde = pde;
         storageBitfield[index].pte = pte;
         storageBitfield[index].storageAddress = storageAddr;
-        savePageToStorage(memoryAddr, storageAddr);
+        copyPage(memoryAddr, storageAddr);
     }
 
     // Store disk address of page copy in its page table entry.
