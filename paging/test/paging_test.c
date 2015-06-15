@@ -181,6 +181,9 @@ int main(int argc, char** argv) {
         setFlags(0x08052000, ACCESSED | DIRTY, pageDir);
         printf("Remove 08048000\n");
         testPageFault(0x08053000);
+        setFlags(0x08053000, ACCESSED | DIRTY, pageDir);
+        printf("Read 08048000\n");
+        testPageFault(0x08048000);
         
         //printf("Testing Bitfield\n");
         //testBitfield();

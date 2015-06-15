@@ -114,6 +114,7 @@ pfhandler(unsigned long ft_addr) {
              * 
              */
             unsigned long memoryAddress = getPageFrame();
+            
             memoryAddress &= 0xFFFFF000;
             
             //If present on storage bit is set, load page from storage in memory
@@ -146,7 +147,7 @@ pfhandler(unsigned long ft_addr) {
             unsigned long indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
             physicalMemoryBitfield[indexInMemoryBitfield] = 1;
             
-            pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
+            
             pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
 
         } else {
@@ -189,7 +190,9 @@ getPageFrame() {
     //There is no page left
     //get virtual address of page to replace
     unsigned long virtAddr = getAddressOfPageToReplace();
+    pg_struct.ph_addr = virtAddr;
     unsigned long memoryAddress = swap(virtAddr);
+    
     return memoryAddress;
 }
 
@@ -227,10 +230,11 @@ int getIndexOfFrameOnDisk(unsigned long storageAddr) {
 }
 
 unsigned long swap(unsigned long virtAddr) {
-
+    
     // Compute Parameters
-    int pde = PDE(virtAddr);
-    int pte = PTE(virtAddr);
+    unsigned int pde = PDE(virtAddr);
+    unsigned int pte = PTE(virtAddr);
+    
 
     //printf("Swap:\nPDE: %x PTE: %x\n",pde,pte);
     unsigned long storageAddr;
@@ -278,7 +282,6 @@ unsigned long swap(unsigned long virtAddr) {
     //printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
     physicalMemoryBitfield[indexInMemoryBitfield] = 0;
     page_table[pte] &= 0xFFFFFFFE;
-
     return memoryAddr;
 }
 
