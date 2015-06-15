@@ -78,7 +78,7 @@ void copyPage(unsigned long, unsigned long);
 unsigned long getAddressOfPageToReplace();
 int isPresentBit(int, int);
 unsigned long getPageFrame();
-unsigned long swap(unsigned long virtAddr);
+unsigned long swap(unsigned long);
 int getIndexOfFrameOnDisk(unsigned long);
 int indexOfDiskAddrByPdePte(unsigned short, unsigned short);
 void freePageInMemory(int, int);
@@ -114,9 +114,8 @@ pfhandler(unsigned long ft_addr) {
              * 
              */
             unsigned long memoryAddress = getPageFrame();
-
             memoryAddress &= 0xFFFFF000;
-
+            
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE) {
                 int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
@@ -130,22 +129,24 @@ pfhandler(unsigned long ft_addr) {
                 //memset(storageBitfield[indexStorageBitfield].storageAddress, 0, 0x1000);
 #endif                
                 //Reset index in storage Bitfield
-                storageBitfield[indexStorageBitfield].pde = 0;
-                storageBitfield[indexStorageBitfield].pte = 0;
+                //storageBitfield[indexStorageBitfield].pde = 0;
+                //storageBitfield[indexStorageBitfield].pte = 0;
 
 
-                //memoryAddress |= PRESENT_ON_STORAGE;
+                memoryAddress |= PRESENT_ON_STORAGE;
             }
             //Set flags on memory address
             memoryAddress = memoryAddress | PRESENT_BIT | RW_BIT | USER_MODE;
+            
             *(page_table + page_table_offset) = memoryAddress;
+            
             setPresentBit(page_dir_offset, page_table_offset, 1);
-
+            
             //Set Bit in memory bitfield
-            int indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
+            unsigned long indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
             physicalMemoryBitfield[indexInMemoryBitfield] = 1;
-
-            pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
+            
+            pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
             pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
 
         } else {
@@ -273,7 +274,7 @@ unsigned long swap(unsigned long virtAddr) {
     setPresentBit(pde, pte, 0);
 
     //Reset in memory Bitfield
-    int indexInMemoryBitfield = (memoryAddr % startaddress) >> 12;
+    unsigned long indexInMemoryBitfield = (memoryAddr % startaddress) >> 12;
     //printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
     physicalMemoryBitfield[indexInMemoryBitfield] = 0;
     page_table[pte] &= 0xFFFFFFFE;

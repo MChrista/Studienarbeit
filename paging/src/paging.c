@@ -11,8 +11,8 @@
 #define MAX_NUMBER_OF_PAGES 4
 #define MAX_NUMBER_OF_STORGAE_PAGES 256
 
-#define PDE(addr) ((addr & 0xFFC00000) >> 22)
-#define PTE(addr) ((addr & 0x003FF000) >> 12)
+#define PDE(addr) (((addr) & 0xFFC00000) >> 22)
+#define PTE(addr) (((addr) & 0x003FF000) >> 12)
 
 #ifdef __DHBW_KERNEL__
 // Linear address of data segment, defined in ldscript
