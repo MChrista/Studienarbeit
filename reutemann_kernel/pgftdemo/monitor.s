@@ -69,6 +69,8 @@ run_monitor:
         je      .Lread_addr
         cmpb    $'D', %al
         je      .Ldump_addr
+        cmpb    $'P', %al
+        je      .Lpginv_addr
 .Lerror:
         mov     %ecx, -260(%ebp)
         lea     errmsg, %esi
@@ -114,6 +116,11 @@ run_monitor:
         mov     -260(%ebp), %ecx
         jmp     .Lloop
 .Ldump_addr:
+        jmp     .Lloop
+.Lpginv_addr:
+        inc     %esi
+        call    hex2int
+        invlpg  %gs:(%eax)
         jmp     .Lloop
 .Lmonitor_exit:
 

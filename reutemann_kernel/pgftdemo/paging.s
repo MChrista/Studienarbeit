@@ -18,6 +18,7 @@ enable_paging:
         #----------------------------------------------------------
         mov     %cr0, %eax              # current machine status
         bts     $31, %eax               # turn on PG-bit's image
+        bts     $30, %eax               # disable caching
         mov     %eax, %cr0              # enable page-mappings
         jmp     .+2                     # flush prefetch queue
 
@@ -50,3 +51,27 @@ disable_paging:
         leave
         ret
 
+
+        .type           invalidate_addr, @function
+        .globl          invalidate_addr
+invalidate_addr:
+        enter   $0, $0
+        push    %eax
+        push    %gs
+
+        #----------------------------------------------------------
+        # setup GS segment register for linear addressing
+        #----------------------------------------------------------
+        mov     $linDS, %ax
+        mov     %ax, %gs
+
+        #----------------------------------------------------------
+        # invalidate the TLB entry for the given linear address
+        #----------------------------------------------------------
+        mov     8(%ebp), %eax
+        invlpg  %gs:(%eax)
+
+        pop     %gs
+        pop     %eax
+        leave
+        ret
