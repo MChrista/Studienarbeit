@@ -169,31 +169,19 @@ int main(int argc, char** argv) {
         testPageFault(0x08049000);
         testPageFault(0x08050000);
         testPageFault(0x08051000);
-        freeAllPages();
-        testPageFault(0x08048000);
-        testPageFault(0x08049000);
-        testPageFault(0x08050000);
-        testPageFault(0x08051000);
-        printf("Flags:    ACCESSED,DIRTY\n");
+        printf("Set Flags\n");
         setFlags(0x08048000, ACCESSED | DIRTY, pageDir);
         testPageFault(0x08048000);
-        printf("Flags:    ACCESSED,DIRTY\n");
+        setFlags(0x08049000, ACCESSED | DIRTY, pageDir);
+        testPageFault(0x08049000);
         setFlags(0x08051000, ACCESSED | DIRTY, pageDir);
         testPageFault(0x08051000);
-        
-        
-        
+        printf("Remove 08050000\n");
         testPageFault(0x08052000);
         setFlags(0x08052000, ACCESSED | DIRTY, pageDir);
-        printf("Load Page from Storage again\n");
-        testPageFault(0x08049000);
-        printf("Only load storage address\n");
-        testPageFault(0x08050000);
-        //printf("Flags:    ACCESSED,DIRTY\n");
+        printf("Remove 08048000\n");
+        testPageFault(0x08053000);
         
-
-        testPageFault(0x08053FFF);
-        testPageFault(0x08050000);
         //printf("Testing Bitfield\n");
         //testBitfield();
         printf("\nTESTING OVER\n\n");

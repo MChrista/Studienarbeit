@@ -94,6 +94,7 @@ struct pg_struct_t * pageFault(int virtualAddr) {
              * 
              */
             uint32_t memoryAddress = getPageFrame();
+            printf("Returned memory address in pf handler is: %08X\n", memoryAddress);
 
             memoryAddress &= 0xFFFFF000;
 
@@ -124,7 +125,7 @@ struct pg_struct_t * pageFault(int virtualAddr) {
             int indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
             physicalMemoryBitfield[indexInMemoryBitfield] = 1;
 
-            pg_struct.ft_addr = memoryAddress & 0xFFFFF000;
+            pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
             pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
 
         } else {
@@ -217,7 +218,7 @@ uint32_t swap(uint32_t virtAddr) {
 #else
     uint32_t * page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
 #endif
-    
+
     uint32_t memoryAddr = page_table[pte] & 0xFFFFF000;
     int flags = page_table[pte] & 0xFFF;
 
@@ -460,6 +461,11 @@ init_paging() {
     *(page_directory + OFFSET_PROGRAMM_PT) = (uint32_t) programm_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
     *(page_directory + OFFSET_STACK_PT) = (uint32_t) stack_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
 
+#ifdef __DHBW_KERNEL__
+    *(page_directory + OFFSET_KERNEL_PT) += (unsigned long) &LD_DATA_START;
+    *(page_directory + OFFSET_PROGRAMM_PT) += (unsigned long) &LD_DATA_START;
+    *(page_directory + OFFSET_STACK_PT) += (unsigned long) &LD_DATA_START;
+#endif
     //printf("Address of page Directory %p\n",page_directory);
     return page_directory;
 }
