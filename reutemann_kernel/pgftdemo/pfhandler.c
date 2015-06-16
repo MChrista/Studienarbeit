@@ -1,6 +1,6 @@
 #define PRESENT_ON_STORAGE 0x400
-#define DIRTY 0x040
-#define ACCESSED  0x020
+#define DIRTY 0x40
+#define ACCESSED  0x20
 #define USER_MODE 0x004
 #define MAX_NUMBER_OF_PAGES 4
 #define MAX_NUMBER_OF_STORGAE_PAGES 256
@@ -75,7 +75,7 @@ struct storageEntry storageBitfield[MAX_NUMBER_OF_STORGAE_PAGES];
 unsigned long* init_paging();
 int setPresentBit(int, int, int);
 int isPresentBit(int, int);
-int getClassOfPage(int);
+unsigned long getClassOfPage(int);
 void copyPage(unsigned long, unsigned long);
 unsigned long getAddressOfPageToReplace();
 int isPresentBit(int, int);
@@ -90,7 +90,6 @@ static pg_struct_t pg_struct;
 
 
 unsigned long dbg_ft_addr;
-
 
 pg_struct_t *
 pfhandler(unsigned long ft_addr) {
@@ -125,9 +124,9 @@ pfhandler(unsigned long ft_addr) {
              * 
              */
             unsigned long memoryAddress = getPageFrame();
-            
+
             memoryAddress &= 0xFFFFF000;
-            
+
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE) {
                 int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
@@ -149,15 +148,18 @@ pfhandler(unsigned long ft_addr) {
             }
             //Set flags on memory address
             memoryAddress = memoryAddress | PRESENT_BIT | RW_BIT | USER_MODE;
-            
+
             *(page_table + page_table_offset) = memoryAddress;
-            
+            unsigned long virtAddr = 0;
+            virtAddr |= page_dir_offset << 22;
+            virtAddr |= page_table_offset << 12;
             setPresentBit(page_dir_offset, page_table_offset, 1);
-            
+
+
             //Set Bit in memory bitfield
             unsigned long indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
             physicalMemoryBitfield[indexInMemoryBitfield] = 1;
-            
+
             pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
             pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
 
@@ -203,7 +205,7 @@ getPageFrame() {
     unsigned long virtAddr = getAddressOfPageToReplace();
     pg_struct.vic_addr = virtAddr;
     unsigned long memoryAddress = swap(virtAddr);
-    
+
     return memoryAddress;
 }
 
@@ -250,11 +252,11 @@ unsigned long dbg_swap_addr;
 unsigned long dbg_swap_result;
 
 unsigned long swap(unsigned long virtAddr) {
-    
+
     // Compute Parameters
     unsigned int pde = PDE(virtAddr);
     unsigned int pte = PTE(virtAddr);
-    
+
 
     dbg_swap_addr = virtAddr;
 
@@ -282,6 +284,7 @@ unsigned long swap(unsigned long virtAddr) {
             storageAddr = storageBitfield[pageAddrOnStorageIndex].storageAddress;
             // Overwrite copy on disk with modified page 
             copyPage(memoryAddr, storageAddr);
+            pg_struct.sec_addr = storageAddr;
         }
     } else {
         // Get free storage address to save page to
@@ -376,9 +379,10 @@ getAddressOfPageToReplace() {
     int start_pte;
     int counter_pde;
     int counter_pte;
-    int class;
+    unsigned long class;
     int flags;
-    int tmp_class;
+    unsigned long tmp_class;
+    unsigned long virtAddr;
 
     //Save pde and pte of last replace
     start_pde = replace_pde_offset;
@@ -411,29 +415,36 @@ getAddressOfPageToReplace() {
             temp_page_table = (unsigned long *) (page_directory[counter_pde] & 0xFFFFF000);
 #endif
             flags = *(temp_page_table + counter_pte) & 0xFFF;
+           
             tmp_class = getClassOfPage(flags);
-            //Remove access bit
-            *(temp_page_table + counter_pte) &= 0xFFFFFFDF;
+            tmp_class = tmp_class;
+            
+            
             //If class of page is lower than actual class, save pde and pte
             if (class > tmp_class) {
                 class = tmp_class;
+
                 replace_pde_offset = counter_pde;
                 replace_pte_offset = counter_pte;
             }
+            //Remove access bit
+            *(temp_page_table + counter_pte) = *(temp_page_table + counter_pte) & 0xFFFFFFDF;
+            
         }
         //printf("Bool of While %d\n",counter_pde != start_pde && counter_pte != start_pte);
     } while ((counter_pde != start_pde || counter_pte != start_pte) && (class != 0)); //Until walk through bitfield is complete
-
+  
+    //pg_struct.vic_addr = *(temp_page_table + replace_pte_offset);
 
 
     //Create a virtual address with the indices of the page which is to replace
-    unsigned long virtAddr = 0;
+    virtAddr = 0;
     virtAddr |= replace_pde_offset << 22;
     virtAddr |= replace_pte_offset << 12;
     return virtAddr;
 }
 
-int getClassOfPage(int flags) {
+unsigned long getClassOfPage(int flags) {
     //Bit 5: accesed
     //Bit 6: dirty
     if ((flags & ACCESSED) == ACCESSED) {
