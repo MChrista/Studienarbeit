@@ -60,6 +60,8 @@ typedef struct pg_struct {
     unsigned long off; // Page Offset
     unsigned long ph_addr; // Physical Address
     unsigned long flags; // Flags = TBD
+    unsigned long vic_addr; // victim page address
+    unsigned long sec_addr; // secondary storage address
 } pg_struct_t;
 
 struct storageEntry {
@@ -85,6 +87,11 @@ void freePageInMemory(int, int);
 void freeAllPages();
 
 static pg_struct_t pg_struct;
+<<<<<<< HEAD
+=======
+
+unsigned long dbg_ft_addr;
+>>>>>>> hwpaging
 
 pg_struct_t *
 pfhandler(unsigned long ft_addr) {
@@ -92,10 +99,20 @@ pfhandler(unsigned long ft_addr) {
     int page_dir_offset = (ft_addr >> 22) & 0x3FF;
     int page_table_offset = (ft_addr & 0x003FF000) >> 12;
 
+<<<<<<< HEAD
+=======
+    dbg_ft_addr = ft_addr;
+
+>>>>>>> hwpaging
     pg_struct.pde = page_dir_offset;
     pg_struct.pte = page_table_offset;
     pg_struct.off = ft_addr & 0x00000FFF;
     pg_struct.ft_addr = ft_addr;
+<<<<<<< HEAD
+=======
+    pg_struct.vic_addr = 0xFFFFFFFF;
+    pg_struct.sec_addr = 0xFFFFFFFF;
+>>>>>>> hwpaging
 
     //If page table exists in page directory
     if ((page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT) {
@@ -147,7 +164,11 @@ pfhandler(unsigned long ft_addr) {
             unsigned long indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
             physicalMemoryBitfield[indexInMemoryBitfield] = 1;
             
+<<<<<<< HEAD
             
+=======
+            pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
+>>>>>>> hwpaging
             pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
 
         } else {
@@ -172,6 +193,10 @@ getPageFrame() {
      * right 12 bits are the index in storageBitfield
      */
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> hwpaging
     //Maximum allowed pages in memory at actual time.
     int limit;
     if (memoryPageCounter < MAX_NUMBER_OF_PAGES) {
@@ -190,14 +215,28 @@ getPageFrame() {
     //There is no page left
     //get virtual address of page to replace
     unsigned long virtAddr = getAddressOfPageToReplace();
+<<<<<<< HEAD
     pg_struct.ph_addr = virtAddr;
+=======
+    pg_struct.vic_addr = virtAddr;
+>>>>>>> hwpaging
     unsigned long memoryAddress = swap(virtAddr);
     
     return memoryAddress;
 }
 
+<<<<<<< HEAD
 void copyPage(unsigned long src_address, unsigned long dst_address) {
     unusedPar = src_address + dst_address;
+=======
+unsigned long dbg_copy_src_addr;
+unsigned long dbg_copy_dst_addr;
+
+void copyPage(unsigned long src_address, unsigned long dst_address) {
+    unusedPar = src_address + dst_address;
+    dbg_copy_src_addr = src_address;
+    dbg_copy_dst_addr = dst_address;
+>>>>>>> hwpaging
 #ifdef __DHBW_KERNEL__
     //memcpy((unsigned long *)dst_address,(unsigned long *) src_address, 0x1000);
 #else
@@ -228,6 +267,12 @@ int getIndexOfFrameOnDisk(unsigned long storageAddr) {
     int indexStorageBitfield = (storageAddr % startOfStorage) >> 12;
     return indexStorageBitfield;
 }
+<<<<<<< HEAD
+=======
+
+unsigned long dbg_swap_addr;
+unsigned long dbg_swap_result;
+>>>>>>> hwpaging
 
 unsigned long swap(unsigned long virtAddr) {
     
@@ -235,6 +280,10 @@ unsigned long swap(unsigned long virtAddr) {
     unsigned int pde = PDE(virtAddr);
     unsigned int pte = PTE(virtAddr);
     
+<<<<<<< HEAD
+=======
+    dbg_swap_addr = virtAddr;
+>>>>>>> hwpaging
 
     //printf("Swap:\nPDE: %x PTE: %x\n",pde,pte);
     unsigned long storageAddr;
@@ -264,6 +313,10 @@ unsigned long swap(unsigned long virtAddr) {
     } else {
         // Get free storage address to save page to
         storageAddr = getFreeFrameOnDisk();
+<<<<<<< HEAD
+=======
+        pg_struct.sec_addr = storageAddr;
+>>>>>>> hwpaging
         int index = getIndexOfFrameOnDisk(storageAddr);
         storageBitfield[index].pde = pde;
         storageBitfield[index].pte = pte;
@@ -276,12 +329,24 @@ unsigned long swap(unsigned long virtAddr) {
 
     // Reset present bit
     setPresentBit(pde, pte, 0);
+<<<<<<< HEAD
 
     //Reset in memory Bitfield
     unsigned long indexInMemoryBitfield = (memoryAddr % startaddress) >> 12;
     //printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
     physicalMemoryBitfield[indexInMemoryBitfield] = 0;
     page_table[pte] &= 0xFFFFFFFE;
+=======
+
+    //Reset in memory Bitfield
+    unsigned long indexInMemoryBitfield = (memoryAddr % startaddress) >> 12;
+    //printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
+    physicalMemoryBitfield[indexInMemoryBitfield] = 0;
+    page_table[pte] &= 0xFFFFFFFE;
+
+    dbg_swap_result = memoryAddr;
+
+>>>>>>> hwpaging
     return memoryAddr;
 }
 

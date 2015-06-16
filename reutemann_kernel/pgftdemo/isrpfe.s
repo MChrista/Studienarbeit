@@ -47,7 +47,12 @@ pgftmsg:
 pgftaddr:
         .ascii  "________ -> "
 pgphaddr:
-        .ascii  "________\n"
+        .ascii  "________ "
+pgvicaddr:
+        .ascii  "________ "
+pgsecaddr:
+        .ascii  "________"
+        .ascii  "\n"
         .equ    pgftmsg_len, (.-pgftmsg)
 
         .align  4
@@ -73,10 +78,16 @@ isrPFE:
         enter   $0, $0
 
         #----------------------------------------------------------
-        # setup segment registers
+        # setup data segment register
         #----------------------------------------------------------
         mov     $privDS, %ax
         mov     %ax, %ds
+
+        #----------------------------------------------------------
+        # setup GS segment register for linear addressing
+        #----------------------------------------------------------
+        mov     $linDS, %ax
+        mov     %ax, %gs
 
         #----------------------------------------------------------
         # update page fault counter
@@ -84,11 +95,13 @@ isrPFE:
         incl    (pgftcnt)
 
         mov     %cr2, %eax              # faulting address
+        invlpg  %gs:(%eax)              # invalidate TLB
         lea     pgftaddr, %edi
         mov     $8, %ecx
         call    int_to_hex
 
         mov     %cr2, %eax
+        invlpg  (%eax)
         pushl   %eax
         call    pfhandler
         add     $4, %esp
@@ -96,6 +109,17 @@ isrPFE:
         mov     %eax, %ebx
         mov     16(%ebx), %eax          # get physical address
         lea     pgphaddr, %edi
+        mov     $8, %ecx
+        call    int_to_hex
+
+        mov     24(%ebx), %eax
+        invlpg  %gs:(%eax)              # invalidate TLB
+        lea     pgvicaddr, %edi
+        mov     $8, %ecx
+        call    int_to_hex
+
+        mov     28(%ebx), %eax
+        lea     pgsecaddr, %edi
         mov     $8, %ecx
         call    int_to_hex
 
