@@ -34,23 +34,24 @@ void setFlags(int, uint32_t, uint32_t *);
 void testPageFault(char *mode, int virtualAddr, uint32_t * pageDir) {
     struct page_fault_result * pf_result;
     
-    printf("%s 0x%08X\n", mode, virtualAddr);
+    printf("%s %08X\n", mode, virtualAddr);
     if ((pageDir[PDE(virtualAddr)] & PRESENT) == PRESENT) {
         uint32_t * page_table = (uint32_t *) (pageDir[PDE(virtualAddr)] & 0xFFFFF000);
 
         if ((page_table[PTE(virtualAddr)] & PRESENT) != PRESENT) {
             pf_result = pageFault(virtualAddr);
-            printf("Page fault @ 0x%08X -> %08X %08X %08X\n%08X: 00000000\n",
+            printf("Page fault @ 0x%08X -> %08X %08X %08X\n",
                     pf_result->ft_addr,
                     pf_result->ph_addr,
                     pf_result->vic_addr,
-                    pf_result->sec_addr,
-                    pf_result->ft_addr
+                    pf_result->sec_addr
                     );
         }
     }
     if (strncmp(mode, "W", sizeof (char)) == 0) {
         setFlags(virtualAddr, DIRTY, pageDir);
+    }else{
+        printf("%08X: 00000000\n",virtualAddr);
     }
     setFlags(virtualAddr, ACCESSED, pageDir);
 }

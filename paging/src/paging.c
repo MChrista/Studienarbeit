@@ -177,9 +177,8 @@ void copyPage(uint32_t src_address, uint32_t dst_address) {
 #ifdef __DHBW_KERNEL__
     uint32_t *src = (uint32_t *)src_address;
     uint32_t *dst = (uint32_t *)dst_address;
-    
     for(int i=0;i<1024;i++){
-        *(src + i) = *(dst + i);
+        *(src + i) - (unsigned long) &LD_DATA_START = *(dst + i) - (unsigned long) &LD_DATA_START;
     }
     
 #else
