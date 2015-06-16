@@ -175,7 +175,13 @@ getPageFrame() {
 
 void copyPage(uint32_t src_address, uint32_t dst_address) {
 #ifdef __DHBW_KERNEL__
-    *((uint32_t*) dst_address) = *((uint32_t*) src_address);
+    uint32_t *src = (uint32_t *)src_address;
+    uint32_t *dst = (uint32_t *)dst_address;
+    
+    for(int i=0;i<1024;i++){
+        *(src + i) = *(dst + i);
+    }
+    
 #else
     //printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
