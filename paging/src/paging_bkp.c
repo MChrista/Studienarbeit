@@ -63,8 +63,6 @@ struct pg_struct_t {
     int off;
     int ph_addr;
     int flags;
-    int vic_addr; // victim page address
-    int sec_addr; // secondary storage address
 };
 
 struct pg_struct_t pg_struct;
@@ -78,8 +76,6 @@ struct pg_struct_t * pageFault(int virtualAddr) {
     pg_struct.pte = page_table_offset;
     pg_struct.off = virtualAddr & 0x00000FFF;
     pg_struct.ft_addr = virtualAddr;
-    pg_struct.vic_addr = 0xFFFFFFFF;
-    pg_struct.sec_addr = 0xFFFFFFFF;
 
     //If page table exists in page directory
     if ((page_directory[page_dir_offset] & PRESENT_BIT) == PRESENT_BIT) {
@@ -172,7 +168,6 @@ getPageFrame() {
     //There is no page left
     //get virtual address of page to replace
     uint32_t virtAddr = getAddressOfPageToReplace();
-    pg_struct.vic_addr = virtAddr;
     uint32_t memoryAddress = swap(virtAddr);
     return memoryAddress;
 }
@@ -240,20 +235,16 @@ uint32_t swap(uint32_t virtAddr) {
             storageAddr = storageBitfield[pageAddrOnStorageIndex].storageAddress;
             // Overwrite copy on disk with modified page 
             copyPage(memoryAddr, storageAddr);
-            pg_struct.sec_addr = storageAddr;
         }
     } else {
         print_debug("\nSwap without page on storage\n");
         // Get free storage address to save page to
         storageAddr = getFreeFrameOnDisk();
-        pg_struct.sec_addr = storageAddr;
-        
         int index = getIndexOfFrameOnDisk(storageAddr);
         storageBitfield[index].pde = pde;
         storageBitfield[index].pte = pte;
         storageBitfield[index].storageAddress = storageAddr;
         copyPage(memoryAddr, storageAddr);
-        
     }
 
     // Store disk address of page copy in its page table entry.
