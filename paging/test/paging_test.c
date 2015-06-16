@@ -23,6 +23,17 @@ struct page_fault_result {
     int flags;
 };
 
+typedef struct pg_struct {
+    unsigned long ft_addr; // faulting linear memory address
+    unsigned long pde; // Page Directory Entry
+    unsigned long pte; // Page Table Entry
+    unsigned long off; // Page Offset
+    unsigned long ph_addr; // Physical Address
+    unsigned long flags; // Flags = TBD
+    unsigned long vic_addr; // victim page address
+    unsigned long sec_addr; // secondary storage address
+} pg_struct_t;
+
 void testPageClass();
 
 void testPageClass() {
@@ -38,17 +49,30 @@ void testPageClass() {
      */
 }
 
-void testPageFault(int virtualAddr) {
+void testPageFault(char * mode, int virtualAddr, uint32_t * pageDir) {
     struct page_fault_result * pf_result;
-    pf_result = pageFault(virtualAddr);
-    printf("[PFRES] 0x%08X\t0x%03X\t0x%03X\t0x%03X\t\t0x%08X\t%03X\n",
-            pf_result->fault_address,
-            pf_result->pde,
-            pf_result->pte,
-            pf_result->offset,
-            pf_result->physical_address,
-            pf_result->flags
+    
+    if ((pageDir[PDE(virtualAddr)]&PRESENT) == PRESENT)
+    {
+        uint32_t * page_table = (uint32_t *) (pageDir[PDE(virtualAddr)]&0xFFFFF000);
+        
+        if ( (page_table[PTE(virtualAddr)]&PRESENT) != PRESENT )
+        {
+            pg_struct_t * pf_result = pageFault(virtualAddr);
+            printf("Page fault @ 0x%08X -> 0x%08X 0x%08X 0x%08X",
+                pf_result->ft_addr,
+                pf_result->ph_addr,
+                pf_result->vic_addr,
+                pf_result->sec_addr
             );
+        }
+        
+    }
+    
+    if (strncmp(mode, "W", sizeof(char))){
+        setFlags(virtualAddr, DIRTY);
+    }
+    setFlags(virtualAddr, ACCESSED);
 }
 
 void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory) {
@@ -144,7 +168,6 @@ void testBitfield() {
 }
 
 int main(int argc, char** argv) {
-    printf("Test: starting main");
     uint32_t * pageDir = init_paging();
     if (argc > 1) {
         FILE * f;
@@ -154,10 +177,13 @@ int main(int argc, char** argv) {
             exit(1);
         }
         int testAddr;
-        printf("\nType\tAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\tFlags\n");
-        while (fscanf(f, "%08X", &testAddr) != EOF) {
+        char mode[2];
+        
+        //printf("\nType\tAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\tFlags\n");
+        while (fscanf(f, "%s %08X\n", mode, &testAddr) != EOF) {
+            printf("%s 0x%08X\n", mode, testAddr );
             //testPaging(testAddr, pageDir);
-            testPageFault(testAddr);
+            testPageFault(mode, testAddr, pageDir);
         }
         printf("EOF");
 
@@ -165,7 +191,7 @@ int main(int argc, char** argv) {
         printf("No Testdata given. Using default.\n");
         testPageClass();
         printf("\n        Address\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
-        testPageFault(0x08048000);
+      /*  testPageFault(0x08048000);
         testPageFault(0x08049000);
         testPageFault(0x08050000);
         testPageFault(0x08051000);
@@ -183,7 +209,7 @@ int main(int argc, char** argv) {
         testPageFault(0x08053000);
         setFlags(0x08053000, ACCESSED | DIRTY, pageDir);
         printf("Read 08048000\n");
-        testPageFault(0x08048000);
+        testPageFault(0x08048000);*/
         
         //printf("Testing Bitfield\n");
         //testBitfield();
