@@ -4,9 +4,7 @@
 #include <math.h>
 #include <unistd.h>
 #include <stdlib.h>
-
-#define PDE(addr) ((addr & 0xFFC00000) >> 22)
-#define PTE(addr) ((addr & 0x003FF000) >> 12)
+#include <string.h>
 
 #define PRESENT   0x00000001
 #define READWRITE 0x00000002
@@ -14,65 +12,47 @@
 #define ACCESSED  0x00000020
 #define DIRTY     0x00000040
 
+#define PDE(addr) (((addr) & 0xFFC00000) >> 22)
+#define PTE(addr) (((addr) & 0x003FF000) >> 12)
+
+
+
 struct page_fault_result {
-    int fault_address;
+    int ft_addr;
     int pde;
     int pte;
-    int offset;
-    int physical_address;
+    int off;
+    int ph_addr;
     int flags;
+    int vic_addr;
+    int sec_addr;
 };
 
-typedef struct pg_struct {
-    unsigned long ft_addr; // faulting linear memory address
-    unsigned long pde; // Page Directory Entry
-    unsigned long pte; // Page Table Entry
-    unsigned long off; // Page Offset
-    unsigned long ph_addr; // Physical Address
-    unsigned long flags; // Flags = TBD
-    unsigned long vic_addr; // victim page address
-    unsigned long sec_addr; // secondary storage address
-} pg_struct_t;
 
-void testPageClass();
+void setFlags(int, uint32_t, uint32_t *);
 
-void testPageClass() {
-    /*
-    printf("Class of Page %d\n",getClassOfPage(0));
-    printf("Class of Page %d\n",getClassOfPage(1));
-    printf("Class of Page %d\n",getClassOfPage(2));
-    printf("Class of Page %d\n",getClassOfPage(32));
-    printf("Class of Page %d\n",getClassOfPage(64));
-    printf("Class of Page %d\n",getClassOfPage(96));
-    printf("Class of Page %d\n",getClassOfPage(99));
-    printf("Class of Page %d\n",getClassOfPage(67));
-     */
-}
-
-void testPageFault(char * mode, int virtualAddr, uint32_t * pageDir) {
+void testPageFault(char *mode, int virtualAddr, uint32_t * pageDir) {
     struct page_fault_result * pf_result;
     
-    if ((pageDir[PDE(virtualAddr)]&PRESENT) == PRESENT)
-    {
-        uint32_t * page_table = (uint32_t *) (pageDir[PDE(virtualAddr)]&0xFFFFF000);
-        
-        if ( (page_table[PTE(virtualAddr)]&PRESENT) != PRESENT )
-        {
-            pg_struct_t * pf_result = pageFault(virtualAddr);
-            printf("Page fault @ 0x%08X -> 0x%08X 0x%08X 0x%08X",
-                pf_result->ft_addr,
-                pf_result->ph_addr,
-                pf_result->vic_addr,
-                pf_result->sec_addr
-            );
+    printf("%s 0x%08X\n", mode, virtualAddr);
+    if ((pageDir[PDE(virtualAddr)] & PRESENT) == PRESENT) {
+        uint32_t * page_table = (uint32_t *) (pageDir[PDE(virtualAddr)] & 0xFFFFF000);
+
+        if ((page_table[PTE(virtualAddr)] & PRESENT) != PRESENT) {
+            pf_result = pageFault(virtualAddr);
+            printf("Page fault @ 0x%08X -> %08X %08X %08X\n%08X: 00000000\n",
+                    pf_result->ft_addr,
+                    pf_result->ph_addr,
+                    pf_result->vic_addr,
+                    pf_result->sec_addr,
+                    pf_result->ft_addr
+                    );
         }
-        
     }
-    
-    if (strncmp(mode, "W", sizeof(char))){
-        setFlags(virtualAddr, DIRTY);
+    if (strncmp(mode, "W", sizeof (char)) == 0) {
+        setFlags(virtualAddr, DIRTY, pageDir);
     }
-    setFlags(virtualAddr, ACCESSED);
+    setFlags(virtualAddr, ACCESSED, pageDir);
 }
 
 void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory) {
@@ -109,11 +89,11 @@ void testPaging(int virtualAddr, uint32_t * page_directory) {
         printf("\t0x%08X\n", *(page_table + page_table_offset));
 
         printf("[PFRES] 0x%08X\t0x%03X\t0x%03X\t0x%03X\t\t0x%08X\t%03X\n",
-                pf_result->fault_address,
+                pf_result->ft_addr,
                 pf_result->pde,
                 pf_result->pte,
-                pf_result->offset,
-                pf_result->physical_address,
+                pf_result->off,
+                pf_result->ph_addr,
                 pf_result->flags
                 );
     } else {
@@ -176,12 +156,11 @@ int main(int argc, char** argv) {
             fprintf(stderr, "Can't open input file\n");
             exit(1);
         }
-        int testAddr;
-        char mode[2];
-        
+        uint32_t testAddr;
+        char *mode;
+
         //printf("\nType\tAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\tFlags\n");
         while (fscanf(f, "%s %08X\n", mode, &testAddr) != EOF) {
-            printf("%s 0x%08X\n", mode, testAddr );
             //testPaging(testAddr, pageDir);
             testPageFault(mode, testAddr, pageDir);
         }
@@ -189,29 +168,7 @@ int main(int argc, char** argv) {
 
     } else {
         printf("No Testdata given. Using default.\n");
-        testPageClass();
         printf("\n        Address\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\n");
-      /*  testPageFault(0x08048000);
-        testPageFault(0x08049000);
-        testPageFault(0x08050000);
-        testPageFault(0x08051000);
-        printf("Set Flags\n");
-        setFlags(0x08048000, ACCESSED | DIRTY, pageDir);
-        testPageFault(0x08048000);
-        setFlags(0x08049000, ACCESSED | DIRTY, pageDir);
-        testPageFault(0x08049000);
-        setFlags(0x08051000, ACCESSED | DIRTY, pageDir);
-        testPageFault(0x08051000);
-        printf("Remove 08050000\n");
-        testPageFault(0x08052000);
-        setFlags(0x08052000, ACCESSED | DIRTY, pageDir);
-        printf("Remove 08048000\n");
-        testPageFault(0x08053000);
-        setFlags(0x08053000, ACCESSED | DIRTY, pageDir);
-        printf("Read 08048000\n");
-        testPageFault(0x08048000);*/
-        
-        //printf("Testing Bitfield\n");
         //testBitfield();
         printf("\nTESTING OVER\n\n");
     }

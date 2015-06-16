@@ -21,6 +21,7 @@
 extern unsigned long LD_DATA_START;
 extern unsigned long LD_IMAGE_START;
 #endif
+
 /*
  * Declaration of Page Directory and Page tables
  */
@@ -98,24 +99,19 @@ struct pg_struct_t * pageFault(int virtualAddr) {
              * 
              */
             uint32_t memoryAddress = getPageFrame();
-            printf("Returned memory address in pf handler is: %08X\n", memoryAddress);
+            //printf("Returned memory address in pf handler is: %08X\n", memoryAddress);
 
             memoryAddress &= 0xFFFFF000;
 
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE) {
                 int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
-                printf("Index in storage bitfield %i\n", indexStorageBitfield);
+                //printf("Index in storage bitfield %i\n", indexStorageBitfield);
                 //Update page in storageBitfield TODO
                 //storageBitfield[indexStorageBitfield].pde = page_dir_offset;
                 //storageBitfield[indexStorageBitfield].pte = page_table_offset;
                 //storageBitfield[indexStorageBitfield].storageAddress = storageAddressOfPage;
                 copyPage(storageBitfield[indexStorageBitfield].storageAddress, memoryAddress);
-#ifdef __DHBW_KERNEL__
-                memset(storageBitfield[indexStorageBitfield].storageAddress, 0, 0x1000);
-#endif                
-                storageBitfield[indexStorageBitfield].pde = 0;
-                storageBitfield[indexStorageBitfield].pte = 0;
 
 
                 //memoryAddress |= PRESENT_ON_STORAGE;
@@ -179,9 +175,9 @@ getPageFrame() {
 
 void copyPage(uint32_t src_address, uint32_t dst_address) {
 #ifdef __DHBW_KERNEL__
-    memcpy(dst_address, src_address, 0x1000);
+    *((uint32_t*) dst_address) = *((uint32_t*) src_address);
 #else
-    printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
+    //printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
 
 }
@@ -197,7 +193,7 @@ int indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte) {
 
 uint32_t getFreeFrameOnDisk() {
     int indexOfFreeFrame = indexOfDiskAddrByPdePte(0, 0);
-    printf("Index of Frame on Disk: %i\n", indexOfFreeFrame);
+    //printf("Index of Frame on Disk: %i\n", indexOfFreeFrame);
     if (indexOfFreeFrame >= 0) {
         return (uint32_t) (startOfStorage + indexOfFreeFrame * 0x1000);
     }
@@ -231,7 +227,7 @@ uint32_t swap(uint32_t virtAddr) {
 
     // Check if page to swap is on disk
     if ((flags & PRESENT_ON_STORAGE) == PRESENT_ON_STORAGE) {
-        print_debug("\nSwap with page in storage\n");
+        //print_debug("\nSwap with page in storage\n");
         //printf("Memory Address is %08X\n\n", memoryAddr);
         // Check if page was modified, only save it then
         if ((flags & DIRTY) == DIRTY) {
@@ -243,17 +239,19 @@ uint32_t swap(uint32_t virtAddr) {
             pg_struct.sec_addr = storageAddr;
         }
     } else {
-        print_debug("\nSwap without page on storage\n");
+        //print_debug("\nSwap without page on storage\n");
         // Get free storage address to save page to
         storageAddr = getFreeFrameOnDisk();
+        //printf("Storage Address is: %08x\n", storageAddr);
         pg_struct.sec_addr = storageAddr;
-        
+
         int index = getIndexOfFrameOnDisk(storageAddr);
+        //printf("Index in storage array: %i\n", index);
         storageBitfield[index].pde = pde;
         storageBitfield[index].pte = pte;
         storageBitfield[index].storageAddress = storageAddr;
         copyPage(memoryAddr, storageAddr);
-        
+
     }
 
     // Store disk address of page copy in its page table entry.
@@ -264,7 +262,7 @@ uint32_t swap(uint32_t virtAddr) {
 
     //Reset in memory Bitfield
     int indexInMemoryBitfield = (memoryAddr % startaddress) >> 12;
-    printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
+    //printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
     physicalMemoryBitfield[indexInMemoryBitfield] = 0;
     page_table[pte] &= 0xFFFFFFFE;
 
@@ -454,27 +452,32 @@ init_paging() {
 #ifdef __DHBW_KERNEL__
         if (i >= (LD_IMAGE_START >> 12) && i < (LD_DATA_START >> 12)) {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT);
+        } else if (i > (LD_DATA_START >> 12) {
+            kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT + RW_BIT);
         } else {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT + RW_BIT + USER_MODE);
         }
+
 #else
         if (i >= (0x10000 >> 12) && i < (0x20000 >> 12)) {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT);
-        } else {
+        } else if(i > (0x20000 >> 12)){
+             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT + RW_BIT);
+        }else {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PRESENT_BIT + RW_BIT + USER_MODE);
         }
 #endif
-        setPresentBit(0, i, 1);
-    }
-    *(page_directory + OFFSET_KERNEL_PT) = (uint32_t) kernel_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
-    *(page_directory + OFFSET_PROGRAMM_PT) = (uint32_t) programm_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
-    *(page_directory + OFFSET_STACK_PT) = (uint32_t) stack_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
+            setPresentBit(0, i, 1);
+        }
+        *(page_directory + OFFSET_KERNEL_PT) = (uint32_t) kernel_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
+                *(page_directory + OFFSET_PROGRAMM_PT) = (uint32_t) programm_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
+                *(page_directory + OFFSET_STACK_PT) = (uint32_t) stack_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
 
 #ifdef __DHBW_KERNEL__
-    *(page_directory + OFFSET_KERNEL_PT) += (unsigned long) &LD_DATA_START;
-    *(page_directory + OFFSET_PROGRAMM_PT) += (unsigned long) &LD_DATA_START;
-    *(page_directory + OFFSET_STACK_PT) += (unsigned long) &LD_DATA_START;
+                *(page_directory + OFFSET_KERNEL_PT) += (unsigned long) &LD_DATA_START;
+                *(page_directory + OFFSET_PROGRAMM_PT) += (unsigned long) &LD_DATA_START;
+                *(page_directory + OFFSET_STACK_PT) += (unsigned long) &LD_DATA_START;
 #endif
-    //printf("Address of page Directory %p\n",page_directory);
-    return page_directory;
-}
+                //printf("Address of page Directory %p\n",page_directory);
+        return page_directory;
+    }
