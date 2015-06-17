@@ -12,7 +12,7 @@ AR          = ar
 AROPT       = rcsv
 NASM        = nasm
 NASMOPT     = -g -f elf -F dwarf
-CFLAGS      = -m32 -Wall -Werror -Wextra -g -O1 -std=gnu99 -D__DHBW_KERNEL__
+CFLAGS      = -m32 -Wall -Werror -Wextra -g -O2 -std=gnu99 -D__DHBW_KERNEL__
 LDFLAGS     = -melf_i386 --warn-common --fatal-warnings -n
 PS2PDF      = ps2pdf
 A2PS        = a2ps

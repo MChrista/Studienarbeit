@@ -18,7 +18,7 @@ kgetc:
         # now await input from the remote PC
 .Lloop:
         mov     $0x3f8+5, %dx           # Line Status i/o-port
-        hlt
+        #hlt
         in      %dx, %al                # poll the Line Status
         test    $0x01, %al              # received data ready?
         jz      .Lloop                  # no, continue polling

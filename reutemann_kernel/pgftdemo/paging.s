@@ -1,5 +1,23 @@
 
+#==================================================================
+# S E C T I O N   T E X T
+#==================================================================
         .section        .text
+        .code32
+
+
+#-------------------------------------------------------------------
+# FUNCTION:   enable_paging
+#
+# PURPOSE:    Enable paging support by the microprocessor
+#
+# C Call:     void enable_paging(void)
+#
+# PARAMETERS: none
+#
+# RETURN:     none
+#
+#-------------------------------------------------------------------
         .type           enable_paging, @function
         .globl          enable_paging
         .extern         LD_DATA_START   # constant defined in ldscript
@@ -27,6 +45,18 @@ enable_paging:
         ret
 
 
+#-------------------------------------------------------------------
+# FUNCTION:   disable_paging
+#
+# PURPOSE:    Disable paging support by the microprocessor
+#
+# C Call:     void disable_paging(void)
+#
+# PARAMETERS: none
+#
+# RETURN:     none
+#
+#-------------------------------------------------------------------
         .type           disable_paging, @function
         .globl          disable_paging
 disable_paging:
@@ -52,6 +82,20 @@ disable_paging:
         ret
 
 
+#-------------------------------------------------------------------
+# FUNCTION:   invalidate_addr
+#
+# PURPOSE:    Invalidates the TLB entry associated with the virtual
+#             address provided as argument
+#
+# C Call:     void invalidate_addr(unsigned long addr)
+#
+# PARAMETERS: (via stack - C style)
+#             addr - virtual address to invalidate
+#
+# RETURN:     none
+#
+#-------------------------------------------------------------------
         .type           invalidate_addr, @function
         .globl          invalidate_addr
 invalidate_addr:
@@ -75,3 +119,4 @@ invalidate_addr:
         pop     %eax
         leave
         ret
+
