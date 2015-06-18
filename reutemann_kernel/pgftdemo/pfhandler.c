@@ -213,15 +213,13 @@ unsigned long dbg_copy_src_addr;
 unsigned long dbg_copy_dst_addr;
 
 void copyPage(unsigned long src_address, unsigned long dst_address) {
+    unusedPar = src_address + dst_address;
 #ifdef __DHBW_KERNEL__
-    unsigned long *src = (unsigned long *)src_address - (unsigned long) &LD_DATA_START;
-    unsigned long *dst = (unsigned long *)dst_address - (unsigned long) &LD_DATA_START;
-    //unsigned long *src = (unsigned long *)src_address;
-    //unsigned long *dst = (unsigned long *)dst_address;
-    for(int i=0x0;i<0x1000;i+=0x4){
-        src[i] = dst[i];
-    }
-    
+    unsigned long *src = (unsigned long *)(src_address - (unsigned long) &LD_DATA_START);
+    unsigned long *dst = (unsigned long *)(dst_address - (unsigned long) &LD_DATA_START);
+    //unsigned long *src = (unsigned long *)0x08048000;
+    //unsigned long *dst = (unsigned long *)0x08049000;
+    *dst = *src;
 #else
     //printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
