@@ -85,6 +85,7 @@ int getIndexOfFrameOnDisk(unsigned long);
 int indexOfDiskAddrByPdePte(unsigned short, unsigned short);
 void freePageInMemory(int, int);
 void freeAllPages();
+void invalidate_addr(unsigned long);
 
 static pg_struct_t pg_struct;
 
@@ -212,13 +213,17 @@ unsigned long dbg_copy_src_addr;
 unsigned long dbg_copy_dst_addr;
 
 void copyPage(unsigned long src_address, unsigned long dst_address) {
-    unusedPar = src_address + dst_address;
-    dbg_copy_src_addr = src_address;
-    dbg_copy_dst_addr = dst_address;
 #ifdef __DHBW_KERNEL__
-    //memcpy((unsigned long *)dst_address,(unsigned long *) src_address, 0x1000);
+    unsigned long *src = (unsigned long *)src_address - (unsigned long) &LD_DATA_START;
+    unsigned long *dst = (unsigned long *)dst_address - (unsigned long) &LD_DATA_START;
+    //unsigned long *src = (unsigned long *)src_address;
+    //unsigned long *dst = (unsigned long *)dst_address;
+    for(int i=0x0;i<0x1000;i+=0x4){
+        src[i] = dst[i];
+    }
+    
 #else
-    printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
+    //printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
 
 }
@@ -428,6 +433,10 @@ getAddressOfPageToReplace() {
             }
             //Remove access bit
             *(temp_page_table + counter_pte) = *(temp_page_table + counter_pte) & 0xFFFFFFDF;
+            virtAddr = 0;
+            virtAddr |= counter_pde << 22;
+            virtAddr |= counter_pte << 12;
+            invalidate_addr(virtAddr); 
             
         }
         //printf("Bool of While %d\n",counter_pde != start_pde && counter_pte != start_pte);
