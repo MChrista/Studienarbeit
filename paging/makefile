@@ -1,7 +1,7 @@
 # set global variables
 LIBS=-I./lib -I./src
 CC=gcc
-CFLAGS=-std=c99
+CFLAGS=-std=c99 -m32
 
 all: test main
 

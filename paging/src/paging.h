@@ -11,20 +11,29 @@
 
 
 
-struct pg_struct_t;
+typedef struct pg_struct {
+    int ft_addr;
+    int pde;
+    int pte;
+    int off;
+    int ph_addr;
+    int flags;
+    int vic_addr; // victim page address
+    int sec_addr; // secondary storage address
+}pg_struct_t;
 
-struct pg_struct_t * pageFault( int);
+pg_struct_t * pfhandler(uint32_t);
 uint32_t* init_paging();
-int setPresentBit(int , int , int);
-int isPresentBit(int, int);
-int getClassOfPage(int);
+uint32_t setPresentBit(uint32_t , uint32_t , uint32_t);
+uint32_t isPresentBit(uint32_t, uint32_t);
+uint32_t getClassOfPage(uint32_t);
 void copyPage(uint32_t , uint32_t );
 uint32_t getAddressOfPageToReplace();
-int isPresentBit(int , int );
+uint32_t isPresentBit(uint32_t , uint32_t );
 uint32_t getPageFrame();
 uint32_t swap(uint32_t virtAddr);
 void print_debug(char*);
-int getIndexOfFrameOnDisk(uint32_t);
-int indexOfDiskAddrByPdePte(uint32_t,uint32_t);
-void freePageInMemory(int, int);
+uint32_t getIndexOfFrameOnDisk(uint32_t);
+uint32_t indexOfDiskAddrByPdePte(uint32_t,uint32_t);
+void freePageInMemory(uint32_t, uint32_t);
 void freeAllPages();

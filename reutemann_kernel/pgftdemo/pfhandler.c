@@ -16,6 +16,8 @@
 #define PDE(addr) (((addr) & 0xFFC00000) >> 22)
 #define PTE(addr) (((addr) & 0x003FF000) >> 12)
 
+#include "types.h"
+
 #ifdef __DHBW_KERNEL__
 // Linear address of data segment, defined in ldscript
 // use only in Kernel context with x86 segmentation
@@ -33,7 +35,7 @@ unsigned long programm_page_table[1024] __attribute__((aligned(0x1000)));
 unsigned long stack_page_table[1024] __attribute__((aligned(0x1000)));
 
 //General Parameters
-int startaddress = 0x200000; //Startaddress for Physical Memory
+uint32_t startaddress = 0x200000; //Startaddress for Physical Memory
 
 //Can be set down, but not higher than die maximum number of pages
 int memoryPageCounter = MAX_NUMBER_OF_PAGES;

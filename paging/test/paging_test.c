@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <inttypes.h>
-#include "paging.h"
+#include "../src/paging.h"
 #include <math.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -15,36 +15,22 @@
 #define PDE(addr) (((addr) & 0xFFC00000) >> 22)
 #define PTE(addr) (((addr) & 0x003FF000) >> 12)
 
-
-
-struct page_fault_result {
-    int ft_addr;
-    int pde;
-    int pte;
-    int off;
-    int ph_addr;
-    int flags;
-    int vic_addr;
-    int sec_addr;
-};
-
-
 void setFlags(int, uint32_t, uint32_t *);
 
+
 void testPageFault(char *mode, int virtualAddr, uint32_t * pageDir) {
-    struct page_fault_result * pf_result;
-    
+    pg_struct_t *pg_struct;
     printf("%s %08X\n", mode, virtualAddr);
     if ((pageDir[PDE(virtualAddr)] & PRESENT) == PRESENT) {
         uint32_t * page_table = (uint32_t *) (pageDir[PDE(virtualAddr)] & 0xFFFFF000);
 
         if ((page_table[PTE(virtualAddr)] & PRESENT) != PRESENT) {
-            pf_result = pageFault(virtualAddr);
+            pg_struct = pfhandler(virtualAddr);
             printf("Page fault @ 0x%08X -> %08X %08X %08X\n",
-                    pf_result->ft_addr,
-                    pf_result->ph_addr,
-                    pf_result->vic_addr,
-                    pf_result->sec_addr
+                    pg_struct->ft_addr,
+                    pg_struct->ph_addr,
+                    pg_struct->vic_addr,
+                    pg_struct->sec_addr
                     );
         }
     }
@@ -66,9 +52,9 @@ void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory) {
 }
 
 void testPaging(int virtualAddr, uint32_t * page_directory) {
-
+    /*
     struct page_fault_result * pf_result;
-
+    
     int page_dir_offset = (virtualAddr & 0xFFC00000) >> 22;
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
 
@@ -82,10 +68,10 @@ void testPaging(int virtualAddr, uint32_t * page_directory) {
         page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000);
         if ((*(page_table + page_table_offset) & PRESENT_BIT)) { //if page present Bit is set
             printf("\t");
-            pf_result = pageFault(virtualAddr);
+            pf_result = pfhandler(virtualAddr);
         } else {
             printf("\tFPTE");
-            pf_result = pageFault(virtualAddr);
+            pf_result = pfhandler(virtualAddr);
         }
         printf("\t0x%08X\n", *(page_table + page_table_offset));
 
@@ -100,6 +86,7 @@ void testPaging(int virtualAddr, uint32_t * page_directory) {
     } else {
         printf("\tFPDE\n");
     }
+     * */
 }
 
 void testBitfield() {

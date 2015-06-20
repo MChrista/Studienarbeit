@@ -22,11 +22,11 @@ int main(int argc, char *argv[]){
     
     /*
     printf("Init Paging Address %p\n",init_paging());
-    pageFault(0xFFFFFFFC);
-    pageFault(0xFFFFFFFC);
-    pageFault(0xFFFFFFFC);
-    pageFault(0xFFFFFFFC);
-    pageFault(0xFFFFFFFC);
+    pfhandler(0xFFFFFFFC);
+    pfhandler(0xFFFFFFFC);
+    pfhandler(0xFFFFFFFC);
+    pfhandler(0xFFFFFFFC);
+    pfhandler(0xFFFFFFFC);
 */
 #ifndef KernelEntwicklung
     for(i=1;i<argc;i++){
@@ -105,25 +105,25 @@ int isMemoryAddress(int memoryAddress){
 void testReplacePage(){
     printf("Start of testing replace pages");
     init_paging();
-    pageFault(0x00010000);
-    pageFault(0x00010000);
-    pageFault(0x00010000);
-    pageFault(0x000100FF);
-    pageFault(0x00020000);
-    pageFault(0x00020ABC);
-    pageFault(0x000B8000);
-    pageFault(0x000110FF);
-    pageFault(0x08048000);
-    pageFault(0x08048000);
-    pageFault(0xFFFFFFFC);
-    pageFault(0x08000000);
-    pageFault(0x08048123);
-    pageFault(0x08049321);
-    pageFault(0x08051C00);
-    pageFault(0x08020ABC);
-    pageFault(0x60000000);
-    pageFault(0x08048FFF);
-    pageFault(0x08049004);
+    pfhandler(0x00010000);
+    pfhandler(0x00010000);
+    pfhandler(0x00010000);
+    pfhandler(0x000100FF);
+    pfhandler(0x00020000);
+    pfhandler(0x00020ABC);
+    pfhandler(0x000B8000);
+    pfhandler(0x000110FF);
+    pfhandler(0x08048000);
+    pfhandler(0x08048000);
+    pfhandler(0xFFFFFFFC);
+    pfhandler(0x08000000);
+    pfhandler(0x08048123);
+    pfhandler(0x08049321);
+    pfhandler(0x08051C00);
+    pfhandler(0x08020ABC);
+    pfhandler(0x60000000);
+    pfhandler(0x08048FFF);
+    pfhandler(0x08049004);
 }
 
 void testIsPresent(){
