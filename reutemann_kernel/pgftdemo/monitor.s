@@ -14,6 +14,7 @@ hlpmsg: .ascii  "Monitor Commands:\n"
         .ascii  "  H           - Help (this text)\n"
         .ascii  "  Q           - Quit monitor\n"
         .ascii  "  M           - Show all mapped non-kernel pages\n"
+        .ascii  "  C           - Release allocated pages (except kernel)\n"
         .ascii  "  P ADDR      - Invalidate TLB entry for virtual address ADDR\n"
         .ascii  "  R ADDR      - Read from address ADDR\n"
         .ascii  "  F ADDR WORD - Fill page belonging to ADDR with 32-bit word WORD,\n"
@@ -39,6 +40,7 @@ pagemsg:.ascii  "________: ________ ____\n"
         .type   run_monitor, @function
         .global run_monitor
         .extern kgets
+        .extern freeAllPages
 run_monitor:
         enter   $268, $0
         pusha
@@ -61,6 +63,10 @@ run_monitor:
         mov     %eax, %ecx          # buffer index
         jz      .Lmonitor_exit
         movb    (%esi), %al
+        cmpb    $10, %al
+        je      .Lloop
+        cmpb    $13, %al
+        je      .Lloop
         # commands without parameters
         cmpb    $'Q', %al
         je      .Lmonitor_exit
@@ -68,6 +74,8 @@ run_monitor:
         je      .Lhelp
         cmpb    $'M', %al
         je      .Lmappedpages
+        cmpb    $'C', %al
+        je      .Lreleasepages
         cmpb    $'#', %al
         je      .Lloop
         # commands that require parameters
@@ -158,13 +166,15 @@ run_monitor:
 .Lmappedpages:
         call    print_mapped_pages
         jmp     .Lloop
+.Lreleasepages:
+        call    freeAllPages
+        jmp     .Lloop
 .Lpginvaddr:
         inc     %esi
         call    hex2int
         invlpg  %gs:(%eax)
         jmp     .Lloop
 .Lmonitor_exit:
-
         pop     %gs
         popa
         leave
