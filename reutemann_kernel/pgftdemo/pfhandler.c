@@ -215,11 +215,12 @@ unsigned long dbg_copy_dst_addr;
 void copyPage(unsigned long src_address, unsigned long dst_address) {
     unusedPar = src_address + dst_address;
 #ifdef __DHBW_KERNEL__
-    unsigned long *src = (unsigned long *)(src_address - (unsigned long) &LD_DATA_START);
-    unsigned long *dst = (unsigned long *)(dst_address - (unsigned long) &LD_DATA_START);
-    //unsigned long *src = (unsigned long *)0x08048000;
-    //unsigned long *dst = (unsigned long *)0x08049000;
-    *dst = *src;
+    unsigned long *src = (unsigned long *) (  src_address - (unsigned long) &LD_DATA_START  )  ;
+    unsigned long *dst = (unsigned long *) (  dst_address - (unsigned long) &LD_DATA_START  )  ;
+    for(int i=0;i<1024;i++){
+        dst[i] = src[i];
+    }
+    
 #else
     //printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
@@ -258,7 +259,7 @@ unsigned long swap(unsigned long virtAddr) {
     // Compute Parameters
     unsigned int pde = PDE(virtAddr);
     unsigned int pte = PTE(virtAddr);
-
+    unsigned long diskAddr;
 
     dbg_swap_addr = virtAddr;
 
@@ -285,7 +286,10 @@ unsigned long swap(unsigned long virtAddr) {
             // Get address of page copy on disk
             storageAddr = storageBitfield[pageAddrOnStorageIndex].storageAddress;
             // Overwrite copy on disk with modified page 
-            copyPage(memoryAddr, storageAddr);
+            diskAddr = 0;
+            diskAddr |= 32 << 22;
+            diskAddr |= 73 << 12;
+            copyPage(virtAddr, diskAddr);
             pg_struct.sec_addr = storageAddr;
         }
     } else {
@@ -297,7 +301,10 @@ unsigned long swap(unsigned long virtAddr) {
         storageBitfield[index].pde = pde;
         storageBitfield[index].pte = pte;
         storageBitfield[index].storageAddress = storageAddr;
-        copyPage(memoryAddr, storageAddr);
+        diskAddr = 0;
+        diskAddr |= 32 << 22;
+        diskAddr |= 73 << 12;
+        copyPage(virtAddr, diskAddr);
     }
 
     // Store disk address of page copy in its page table entry.
