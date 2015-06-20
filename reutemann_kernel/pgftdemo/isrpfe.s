@@ -45,7 +45,9 @@
 pgftmsg:
         .ascii  "Page fault @ 0x"
 pgftaddr:
-        .ascii  "________ -> "
+        .ascii  "________ (EIP 0x"
+eipaddr:
+        .ascii  "________) -> "
 pgphaddr:
         .ascii  "________ "
 pgvicaddr:
@@ -112,14 +114,19 @@ isrPFE:
         mov     $8, %ecx
         call    int_to_hex
 
-        mov     24(%ebx), %eax
+        mov     24(%ebx), %eax          # victim page address
         invlpg  %gs:(%eax)              # invalidate TLB
         lea     pgvicaddr, %edi
         mov     $8, %ecx
         call    int_to_hex
 
-        mov     28(%ebx), %eax
+        mov     28(%ebx), %eax          # storage address
         lea     pgsecaddr, %edi
+        mov     $8, %ecx
+        call    int_to_hex
+
+        mov     68(%ebp), %eax          # instruction addr
+        lea     eipaddr, %edi
         mov     $8, %ecx
         call    int_to_hex
 
