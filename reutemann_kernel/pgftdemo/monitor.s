@@ -13,7 +13,11 @@ errmsg: .ascii  "Syntax Error\n"
 hlpmsg: .ascii  "Monitor Commands:\n"
         .ascii  "  H           - Help (this text)\n"
         .ascii  "  Q           - Quit monitor\n"
+        .ascii  "  M           - Show all mapped non-kernel pages\n"
+        .ascii  "  P ADDR      - Invalidate TLB entry for virtual address ADDR\n"
         .ascii  "  R ADDR      - Read from address ADDR\n"
+        .ascii  "  F ADDR WORD - Fill page belonging to ADDR with 32-bit word WORD,\n"
+        .ascii  "                incremented by one for each address step\n"
         .ascii  "  W ADDR WORD - Write 32-bit word WORD into ADDR\n\n"
         .ascii  "All addresses/words are in hexadecimal, e.g. 00123ABC\n"
         .ascii  "Leading zeros can be omitted\n"
@@ -23,10 +27,14 @@ hlpmsg: .ascii  "Monitor Commands:\n"
 addrmsg:.ascii  "________: ________\n"
         .equ    addrmsg_len, (.-addrmsg)
 
+pagemsg:.ascii  "________: ________ ____\n"
+        .equ    pagemsg_len, (.-pagemsg)
+
 #==================================================================
 # S E C T I O N   T E X T
 #==================================================================
         .section        .text
+
 
         .type   run_monitor, @function
         .global run_monitor
@@ -58,19 +66,23 @@ run_monitor:
         je      .Lmonitor_exit
         cmpb    $'H', %al
         je      .Lhelp
+        cmpb    $'M', %al
+        je      .Lmappedpages
         cmpb    $'#', %al
         je      .Lloop
         # commands that require parameters
         cmp     $3, %cl
         jb      .Lerror
         cmpb    $'W', %al
-        je      .Lwrite_addr
+        je      .Lwriteaddr
         cmpb    $'R', %al
-        je      .Lread_addr
+        je      .Lreadaddr
         cmpb    $'D', %al
-        je      .Ldump_addr
+        je      .Ldumpaddr
+        cmpb    $'F', %al
+        je      .Lfilladdr
         cmpb    $'P', %al
-        je      .Lpginv_addr
+        je      .Lpginvaddr
 .Lerror:
         mov     %ecx, -260(%ebp)
         lea     errmsg, %esi
@@ -85,17 +97,20 @@ run_monitor:
         call    screen_write
         mov     -260(%ebp), %ecx
         jmp     .Lloop
-.Lwrite_addr:
+.Lwriteaddr:
         inc     %esi
+        # read linear address
         call    hex2int
         mov     %eax, %edi
 
+        # read value to write into address
         call    hex2int
         movl    %eax, %gs:(%edi)
         jmp     .Lloop
-.Lread_addr:
+.Lreadaddr:
         mov     %ecx, -260(%ebp)
         inc     %esi
+        # read linear address
         call    hex2int
         mov     %eax, -264(%ebp)        # store address on stack
 
@@ -115,9 +130,35 @@ run_monitor:
         call    screen_write
         mov     -260(%ebp), %ecx
         jmp     .Lloop
-.Ldump_addr:
+.Ldumpaddr:
         jmp     .Lloop
-.Lpginv_addr:
+.Lfilladdr:
+        mov     %ecx, -260(%ebp)
+        inc     %esi
+        # read linear address
+        call    hex2int
+        call    get_page_addr
+        test    %eax, %eax
+        jz      .Lloop
+        mov     %eax, %edi
+
+        # read fill word
+        call    hex2int
+
+        xor     %ecx, %ecx
+.Lfillloop:
+        mov     %eax, %gs:(%edi,%ecx,4)
+        inc     %eax
+        inc     %ecx
+        cmp     $1024, %ecx
+        jb      .Lfillloop
+
+        mov     -260(%ebp), %ecx
+        jmp     .Lloop
+.Lmappedpages:
+        call    print_mapped_pages
+        jmp     .Lloop
+.Lpginvaddr:
         inc     %esi
         call    hex2int
         invlpg  %gs:(%eax)
@@ -126,6 +167,194 @@ run_monitor:
 
         pop     %gs
         popa
+        leave
+        ret
+
+
+        .type   print_mapped_pages, @function
+print_mapped_pages:
+        enter   $4, $0
+        pusha
+
+        # get page directory address
+        mov     %cr3, %esi
+        # segmented page directory address
+        sub     $LD_DATA_START, %esi
+        # ignore first table table, which contains kernel pages
+        mov     $1, %ecx
+.Lpdeloop:
+        # read page directory entry (PDE)
+        mov     (%esi,%ecx,4), %ebx
+        # check present bit
+        test    $1, %ebx
+        jz      .Lskippde
+        # save PDE index
+        mov     %ecx, -4(%ebp)
+        xor     %ecx, %ecx
+        # mask page table address
+        and     $0xfffff000, %ebx
+        # segmented page table address
+        sub     $LD_DATA_START, %ebx
+.Lpteloop:
+        # read page table entry (PTE)
+        mov     (%ebx,%ecx,4), %edx
+        # check present bit
+        test    $1, %edx
+        jz      .Lskippte
+        # read PDE index and shift it
+        mov     -4(%ebp), %eax
+        shl     $10, %eax
+        # add PTE index and shift it
+        add     %ecx, %eax
+        shl     $12, %eax
+        call    print_mapped_addr
+.Lskippte:
+        inc     %ecx
+        cmp     $1024, %ecx
+        jb      .Lpteloop
+        # restore PDE index
+        mov     -4(%ebp), %ecx
+.Lskippde:
+        inc     %ecx
+        cmp     $1024, %ecx
+        jb      .Lpdeloop
+
+        popa
+        leave
+        ret
+
+
+#-------------------------------------------------------------------
+# FUNCTION:   print_mapped_addr
+#
+# PURPOSE:    Print the page table entry and mapped physical address
+#
+# PARAMETERS: (via register)
+#             EAX - virtual address
+#             EDX - mapped physical address
+#
+# RETURN:     none
+#
+#-------------------------------------------------------------------
+        .type   print_mapped_addr, @function
+        .extern int_to_hex
+        .extern screen_write
+print_mapped_addr:
+        enter   $0, $0
+        pusha
+
+        lea     pagemsg, %edi           # pointer to output string
+        mov     $8, %ecx                # number of output digits
+        call    int_to_hex
+
+        mov     %edx, %eax
+        lea     pagemsg+10, %edi        # pointer to output string
+        mov     $8, %ecx                # number of output digits
+        call    int_to_hex
+
+        call    get_pg_flags
+        movl    %eax, pagemsg+19
+
+        lea     pagemsg, %esi           # message-offset
+        mov     $pagemsg_len, %ecx      # message-length
+        call    screen_write
+
+        popa
+        leave
+        ret
+
+
+#------------------------------------------------------------------
+# read the paging flags for the given linear address
+#       %eax (in): linear address
+#
+# return: flags in %eax encoded in ASCII
+#------------------------------------------------------------------
+get_pg_flags:
+        enter   $0, $0
+        push    %edx
+
+        mov     %eax, %edx
+        and     $0xfff, %edx
+        mov     $0x2e202020, %eax
+        test    $1, %edx             # check 'present' bit
+        jz      .Lget_pg_flags_end
+        mov     $'P', %al
+        shl     $8, %eax
+        mov     $'R', %al
+        test    $2, %edx             # check 'read/write' bit
+        jz      .Lread_only
+        mov     $'W', %al
+.Lread_only:
+        shl     $8, %eax
+        mov     $'a', %al
+        test    $1<<5, %edx          # check 'accessed' bit
+        jz      .Lnot_accessed
+        mov     $'A', %al
+.Lnot_accessed:
+        shl     $8, %eax
+        mov     $'d', %al
+        test    $1<<6, %edx          # check 'dirty' bit
+        jz      .Lget_pg_flags_end
+        mov     $'D', %al
+        jmp     .Lget_pg_flags_end
+
+.Ltable_not_mapped:
+        mov     $0x20202020, %eax
+
+.Lget_pg_flags_end:
+
+        pop     %edx
+        leave
+        ret
+
+
+        .type   get_page_addr, @function
+get_page_addr:
+        enter   $4, $0
+        push    %edx
+        push    %esi
+
+        # get page directory address
+        mov     %cr3, %esi
+        # segmented page directory address
+        sub     $LD_DATA_START, %esi
+
+        # store linear address on stack
+        mov     %eax, -4(%ebp)
+        mov     %eax, %edx
+        # initialise default return value
+        xor     %eax, %eax
+
+        # get page directory entry
+        shr     $22, %edx
+        # PDE #0 is reserved for the Kernel
+        test    %edx, %edx
+        jz      .Lget_page_addr_end
+
+        mov     (%esi,%edx,4), %esi
+        test    $1, %esi
+        jz      .Lget_page_addr_end
+
+        mov     -4(%ebp), %edx
+        shr     $12, %edx
+        and     $0x3ff, %edx
+        and     $0xfffff000, %esi
+        lea     (%esi,%edx,4), %esi
+        # segmented page table address
+        sub     $LD_DATA_START, %esi
+        mov     (%esi), %edx
+        test    $1, %edx
+        jz      .Lget_page_addr_end
+
+        # load linear address from stack
+        mov     -4(%ebp), %eax
+        # mask page offset
+        and     $0xfffff000, %eax
+
+.Lget_page_addr_end:
+        pop     %esi
+        pop     %edx
         leave
         ret
 

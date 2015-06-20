@@ -31,6 +31,8 @@ $(PROG).elf : $(OBJS) $(LIBKERNEL) $(LDSCRIPT)
 
 $(PROG).o : ../inc/comgdt.inc
 
+pfhandler.o : types.h
+
 .PHONY: clean
 clean:
 	rm -f *.o *.lst *.map *.sym *.bin *.elf $(TARGETS)
