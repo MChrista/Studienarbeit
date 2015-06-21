@@ -1,9 +1,9 @@
 # set global variables
 LIBS=-I./lib -I./src
 CC=gcc
-CFLAGS=-std=c99 -m32
+CFLAGS=-m32 -Wall -Werror -Wextra -g -O2 -std=gnu99
 
-all: test main
+all: test
 
 main: paging
 	$(CC) $(CFLAGS) ./build/src/paging.o ./src/display.c -o ./build/src/display

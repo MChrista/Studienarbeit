@@ -45,15 +45,15 @@ void testPageFault(char *mode, int virtualAddr, uint32_t * pageDir) {
 void setFlags(int virtualAddr, uint32_t flags, uint32_t * page_directory) {
 
     uint32_t * page_table = (uint32_t *) (page_directory[PDE(virtualAddr)]&0xFFFFF000);
-    int * physicalAddr = (int *) (page_table[PTE(virtualAddr)]&0xFFFFF000);
+    //int * physicalAddr = (int *) (page_table[PTE(virtualAddr)]&0xFFFFF000);
 
     page_table[PTE(virtualAddr)] |= flags;
 
 }
 
 void testPaging(int virtualAddr, uint32_t * page_directory) {
-    /*
-    struct page_fault_result * pf_result;
+
+    pg_struct_t * pf_result;
     
     int page_dir_offset = (virtualAddr & 0xFFC00000) >> 22;
     int page_table_offset = (virtualAddr & 0x003FF000) >> 12;
@@ -86,7 +86,6 @@ void testPaging(int virtualAddr, uint32_t * page_directory) {
     } else {
         printf("\tFPDE\n");
     }
-     * */
 }
 
 void testBitfield() {
@@ -145,7 +144,7 @@ int main(int argc, char** argv) {
             exit(1);
         }
         uint32_t testAddr;
-        char *mode;
+        char *mode = malloc(2);
 
         //printf("\nType\tAddress\t\tPDE\tPTE\tOffset\tFault?\tFrame Addr\tFlags\n");
         while (fscanf(f, "%s %08X\n", mode, &testAddr) != EOF) {

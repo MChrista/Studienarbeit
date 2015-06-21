@@ -59,6 +59,8 @@ struct storageEntry storageBitfield[MAX_NUMBER_OF_STORGAE_PAGES];
 
 static pg_struct_t pg_struct;
 
+uint32_t unsusedPar;
+
 pg_struct_t *
 pfhandler(uint32_t ft_addr) {
 
@@ -168,6 +170,7 @@ void copyPage(uint32_t src_address, uint32_t dst_address) {
     }
     
 #else
+    unsusedPar = src_address + dst_address;
     //printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
 
@@ -260,7 +263,7 @@ uint32_t swap(uint32_t virtAddr) {
 
 uint32_t
 setPresentBit(uint32_t pde_offset, uint32_t pte_offset, uint32_t bool) {
-    if (pde_offset < 0 || pde_offset > 1023 || pte_offset < 0 || pte_offset > 1023) {
+    if (pde_offset > 1023 || pte_offset > 1023) {
         //Offsets are not in range
         return 0;
     } else {
