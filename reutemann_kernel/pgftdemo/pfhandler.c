@@ -483,6 +483,18 @@ init_paging() {
 #endif
         setPresentBit(0, i, 1);
     }
+#ifndef __DHBW_KERNEL__
+    myprintf("PTE is: %d Memory Address is: %08X\n", PTE(SWAPPED_START_ADDR), SWAPPED_START_ADDR);
+    myprintf("Memory Address %08X\n", (256 * 0x1000 + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER));
+    myprintf("Memory Address %08X\n", (512 * 0x1000 + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER));
+    myprintf("Memory Address %08X\n", (SWAPPED_START_ADDR + PAGES_SWAPPED_NUM * PAGE_SIZE));
+#endif
+    //Map swap space
+    for (uint32_t i = 256; i < (256+PAGES_SWAPPED_NUM); i++){
+        kernel_page_table[i] = (uint32_t) (PAGES_SWAPPED_START + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
+    }
+
+
     *(page_directory + PDE_KERNEL_PT) = (uint32_t) kernel_page_table | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
     *(page_directory + PDE_PROGRAMM_PT) = (uint32_t) programm_page_table | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
     *(page_directory + PDE_STACK_PT) = (uint32_t) stack_page_table | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
