@@ -12,14 +12,14 @@
 
 
 typedef struct pg_struct {
-    int ft_addr;
-    int pde;
-    int pte;
-    int off;
-    int ph_addr;
-    int flags;
-    int vic_addr; // victim page address
-    int sec_addr; // secondary storage address
+    uint32_t ft_addr;
+    uint32_t pde;
+    uint32_t pte;
+    uint32_t off;
+    uint32_t ph_addr;
+    uint32_t flags;
+    uint32_t vic_addr; // victim page address
+    uint32_t sec_addr; // secondary storage address
 }pg_struct_t;
 
 pg_struct_t * pfhandler(uint32_t);

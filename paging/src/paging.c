@@ -49,6 +49,8 @@ uint32_t replace_pte_offset = 512;
 //marks reserved pages with an bit. This array is needed to easy find an page to replace
 uint32_t page_bitfield[1024][32];
 
+uint32_t dbg_ft_addr;
+
 struct storageEntry {
     uint32_t pde;
     uint32_t pte;
@@ -66,6 +68,8 @@ pfhandler(uint32_t ft_addr) {
 
     int page_dir_offset = (ft_addr >> 22) & 0x3FF;
     int page_table_offset = (ft_addr & 0x003FF000) >> 12;
+    
+    dbg_ft_addr = ft_addr;
 
     pg_struct.pde = page_dir_offset;
     pg_struct.pte = page_table_offset;
@@ -161,6 +165,10 @@ getPageFrame() {
     return memoryAddress;
 }
 
+
+uint32_t dbg_copy_src_addr;
+uint32_t dbg_copy_dst_addr;
+
 void copyPage(uint32_t src_address, uint32_t dst_address) {
 #ifdef __DHBW_KERNEL__
     uint32_t *src = (uint32_t *)src_address;
@@ -199,6 +207,9 @@ uint32_t getIndexOfFrameOnDisk(uint32_t storageAddr) {
     return indexStorageBitfield;
 }
 
+uint32_t dbg_swap_addr;
+uint32_t dbg_swap_result;
+
 uint32_t swap(uint32_t virtAddr) {
 
     // Compute Parameters
@@ -207,6 +218,7 @@ uint32_t swap(uint32_t virtAddr) {
 
     //printf("Swap:\nPDE: %x PTE: %x\n",pde,pte);
     uint32_t storageAddr;
+    dbg_swap_addr = virtAddr;
 
 #ifdef __DHBW_KERNEL__
     uint32_t * page_table = (uint32_t *) ((page_directory[pde] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
@@ -257,8 +269,11 @@ uint32_t swap(uint32_t virtAddr) {
     //printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
     physicalMemoryBitfield[indexInMemoryBitfield] = 0;
     page_table[pte] &= 0xFFFFFFFE;
-
+    
+    dbg_swap_result = memoryAddr;
+    
     return memoryAddr;
+    
 }
 
 uint32_t
