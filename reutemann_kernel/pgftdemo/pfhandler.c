@@ -13,10 +13,7 @@
 #define OFFSET_STACK_PT 1023
 #define RW_BIT 2
 
-#define PDE(addr) (((addr) & 0xFFC00000) >> 22)
-#define PTE(addr) (((addr) & 0x003FF000) >> 12)
-
-#include "types.h"
+#include "pfhandler.h"
 
 #ifdef __DHBW_KERNEL__
 // Linear address of data segment, defined in ldscript
@@ -65,21 +62,10 @@ struct storageEntry storageBitfield[MAX_NUMBER_OF_STORGAE_PAGES];
 
 uint32_t unsusedPar;
 
-typedef struct pg_struct {
-    uint32_t ft_addr;
-    uint32_t pde;
-    uint32_t pte;
-    uint32_t off;
-    uint32_t ph_addr;
-    uint32_t flags;
-    uint32_t vic_addr; // victim page address
-    uint32_t sec_addr; // secondary storage address
-} pg_struct_t;
 
 static pg_struct_t pg_struct;
 
-pg_struct_t * pfhandler(uint32_t);
-uint32_t* init_paging();
+
 uint32_t setPresentBit(uint32_t, uint32_t, uint32_t);
 uint32_t isPresentBit(uint32_t, uint32_t);
 uint32_t getClassOfPage(uint32_t);
@@ -91,7 +77,6 @@ uint32_t swap(uint32_t virtAddr);
 uint32_t getIndexOfFrameOnDisk(uint32_t);
 uint32_t indexOfDiskAddrByPdePte(uint32_t, uint32_t);
 void freePageInMemory(uint32_t, uint32_t);
-void freeAllPages();
 
 pg_struct_t *
 pfhandler(uint32_t ft_addr) {
