@@ -130,10 +130,16 @@ theIDT:
         .equ    limIDT, (.-theIDT)-1    # this IDT's segment_limit
 #------------------------------------------------------------------
         # image for IDTR register
+        #
+        #----------------------------------------------------------
+        # Note: the linear address offset of the data segment needs
+        #       to be added to theIDT at run-time before this IDT
+        #       is installed
+        #----------------------------------------------------------
         .align  16
         .global regIDT
 regIDT: .word   limIDT
-        .long   theIDT+0x20000          # create linear address
+        .long   theIDT
 #-----------------------------------------------------------------
         .align  16
 intcnt: .space  256*4, 0                # 256 counters (32-bit size)

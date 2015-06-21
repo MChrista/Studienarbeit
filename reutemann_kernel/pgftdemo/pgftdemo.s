@@ -26,11 +26,6 @@
 # C O N S T A N T S
 #-----------------------------------------------------------------
         #----------------------------------------------------------
-        # linear address offset of data segment
-        #----------------------------------------------------------
-        .equ    DATA_START, 0x20000
-
-        #----------------------------------------------------------
         # equates for ISRs
         #----------------------------------------------------------
         .equ    ISR_PFE_ID,     0x0E   # Page Fault Exception
@@ -77,10 +72,16 @@ theGDT:
         .equ    limGDT, (. - theGDT)-1  # our GDT's segment-limit
 #------------------------------------------------------------------
         # image for GDTR register
+        #
+        #----------------------------------------------------------
+        # Note: the linear address offset of the data segment needs
+        #       to be added to theGDT at run-time before this GDT
+        #       is installed
+        #----------------------------------------------------------
         .align  16
         .global regGDT
 regGDT: .word   limGDT
-        .long   theGDT+DATA_START       # create linear address
+        .long   theGDT
 
 #------------------------------------------------------------------
 # I N T E R R U P T   D E S C R I P T O R   T A B L E

@@ -10,6 +10,7 @@ AS          = as
 LD          = ld
 AR          = ar
 AROPT       = rcsv
+ASOPT       = -g --32 -I../inc
 NASM        = nasm
 NASMOPT     = -g -f elf -F dwarf
 CFLAGS      = -m32 -Wall -Werror -Wextra -g -O2 -std=gnu99 -D__DHBW_KERNEL__
@@ -45,7 +46,7 @@ endef
 
 %.o %.lst : %.s
 	@echo AS $<
-	@$(AS) --32 -I../inc -almgns=$*.lst -o $*.o -c $<
+	@$(AS) $(ASOPT) -almgns=$*.lst -o $*.o -c $<
 
 %.bin %.lst : %.asm
 	@echo NASM $<
