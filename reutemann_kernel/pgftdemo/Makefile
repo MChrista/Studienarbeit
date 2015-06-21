@@ -32,6 +32,7 @@ $(PROG).elf : $(OBJS) $(LIBKERNEL) $(LDSCRIPT)
 $(PROG).o : ../inc/comgdt.inc
 
 pfhandler.o : types.h
+pfhandler.o : pfhandler.h
 
 .PHONY: clean
 clean:
