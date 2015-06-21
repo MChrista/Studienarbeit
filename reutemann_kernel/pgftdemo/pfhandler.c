@@ -16,11 +16,16 @@
 #include "pfhandler.h"
 
 #ifdef __DHBW_KERNEL__
+#include<stdarg.h>
 // Linear address of data segment, defined in ldscript
 // use only in Kernel context with x86 segmentation
 // being enabled
 extern uint32_t LD_DATA_START;
 extern uint32_t LD_IMAGE_START;
+#else
+#include<stdarg.h>
+#include <stdio.h>
+int myprintf(const char*,...);
 #endif
 /*
  * Declaration of Page Directory and Page tables
@@ -59,17 +64,12 @@ struct storageEntry {
 
 struct storageEntry storageBitfield[MAX_NUMBER_OF_STORGAE_PAGES];
 
-
-uint32_t unsusedPar;
-
-
 static pg_struct_t pg_struct;
 
 
 uint32_t setPresentBit(uint32_t, uint32_t, uint32_t);
 uint32_t isPresentBit(uint32_t, uint32_t);
 uint32_t getClassOfPage(uint32_t);
-void copyPage(uint32_t, uint32_t);
 uint32_t getAddressOfPageToReplace();
 uint32_t isPresentBit(uint32_t, uint32_t);
 uint32_t getPageFrame();
@@ -77,6 +77,7 @@ uint32_t swap(uint32_t virtAddr);
 uint32_t getIndexOfFrameOnDisk(uint32_t);
 uint32_t indexOfDiskAddrByPdePte(uint32_t, uint32_t);
 void freePageInMemory(uint32_t, uint32_t);
+void copyPage(uint32_t, uint32_t);
 
 pg_struct_t *
 pfhandler(uint32_t ft_addr) {
@@ -98,7 +99,7 @@ pfhandler(uint32_t ft_addr) {
 
         uint32_t *page_table;
 #ifdef __DHBW_KERNEL__
-        page_table = (uint32_t *) ((page_directory[page_dir_offset] & 0xFFFFF000) - (uint32_t) &LD_DATA_START);
+        page_table = (uint32_t *) ((page_directory[page_dir_offset] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
 #else
         page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000);
 #endif
@@ -183,6 +184,7 @@ getPageFrame() {
 
 uint32_t dbg_copy_src_addr;
 uint32_t dbg_copy_dst_addr;
+uint32_t unsusedPar;
 
 void copyPage(uint32_t src_address, uint32_t dst_address) {
     unsusedPar = src_address + dst_address;
@@ -191,12 +193,12 @@ void copyPage(uint32_t src_address, uint32_t dst_address) {
     uint32_t *src = (uint32_t *) (  src_address - (uint32_t) &LD_DATA_START  )  ;
     uint32_t *dst = (uint32_t *) (  dst_address - (uint32_t) &LD_DATA_START  )  ;
     for (int i = 0; i < 1024; i++) {
-        *(dst + i) = *(src + i);
+     *(dst + i) = *(src + i);
     }*/
 
 #else
     unsusedPar = src_address + dst_address;
-    //printf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
+    myprintf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
 
 }
@@ -388,7 +390,7 @@ getAddressOfPageToReplace() {
         if (isPresentBit(counter_pde, counter_pte)) {
             //Found present page
 #ifdef __DHBW_KERNEL__
-            temp_page_table = (uint32_t *) ((page_directory[counter_pde] & 0xFFFFF000) - (uint32_t) &LD_DATA_START);
+            temp_page_table = (uint32_t *) ((page_directory[counter_pde] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
 #else
             temp_page_table = (uint32_t *) (page_directory[counter_pde] & 0xFFFFF000);
 #endif
@@ -432,6 +434,19 @@ uint32_t getClassOfPage(uint32_t flags) {
         }
     }
 }
+
+
+#ifndef __DHBW_KERNEL__
+int myprintf(const char * format, ...) {
+    int rtn = 0;
+    va_list args;
+    va_start(args, format);
+    rtn = vprintf(format, args);
+    va_end(args);
+    return rtn;
+
+}
+#endif
 
 uint32_t*
 init_paging() {
@@ -490,9 +505,9 @@ init_paging() {
     *(page_directory + OFFSET_STACK_PT) = (uint32_t) stack_page_table | PRESENT_BIT | RW_BIT | USER_MODE;
 
 #ifdef __DHBW_KERNEL__
-    *(page_directory + OFFSET_KERNEL_PT) += (uint32_t) &LD_DATA_START;
-    *(page_directory + OFFSET_PROGRAMM_PT) += (uint32_t) &LD_DATA_START;
-    *(page_directory + OFFSET_STACK_PT) += (uint32_t) &LD_DATA_START;
+    *(page_directory + OFFSET_KERNEL_PT) += (uint32_t) & LD_DATA_START;
+    *(page_directory + OFFSET_PROGRAMM_PT) += (uint32_t) & LD_DATA_START;
+    *(page_directory + OFFSET_STACK_PT) += (uint32_t) & LD_DATA_START;
 #endif
     //printf("Address of page Directory %p\n",page_directory);
     return page_directory;

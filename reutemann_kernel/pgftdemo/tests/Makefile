@@ -15,8 +15,8 @@ pagingtests: paging
 	$(CC) $(CFLAGS) ./pfhandler.o ./paging_test.c -o ../paging_test
 
 clean:
-	rm ./build/test/*
-	rm ./build/src/*
+	rm ../paging_test
+	rm ./pfhandler.o
 
 
 .PHONY: all test clean

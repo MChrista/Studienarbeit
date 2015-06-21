@@ -6,7 +6,7 @@
 
 SUBDIRS     = boot libkernel
 SUBDIRS    += welcome timeoday tickdemo
-SUBDIRS    += pmhello pgftdemo
+SUBDIRS    += pmhello pgftdemo pgftdemo/tests
 
 .PHONY: all subdirs $(SUBDIRS)
 .SECONDARY:
