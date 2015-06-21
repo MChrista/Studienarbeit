@@ -13,7 +13,7 @@ LIBKERNEL   = ../libkernel/libkernel.a
 LDSCRIPT    = ldscript
 PROG        = pgftdemo
 
-TARGETS     = $(PROG).flp
+TARGETS     = $(PROG).flp $(PROG).sym
 OBJS        = $(PROG).o pfhandler.o paging.o isrpfe.o irqpit.o kgetc.o kgets.o monitor.o
 
 .PHONY: all
