@@ -123,8 +123,13 @@ _start:
 
         #----------------------------------------------------------
         # load new GDT and IDT for protected mode
+        #
+        # Note: logical addresses in regGDT and regIDT need to be
+        #       converted into linear addresses
         #----------------------------------------------------------
+        addl    $LD_DATA_START, (regGDT+2)
         lgdtl   regGDT
+        addl    $LD_DATA_START, (regIDT+2)
         lidtl   regIDT
 
         #----------------------------------------------------------
