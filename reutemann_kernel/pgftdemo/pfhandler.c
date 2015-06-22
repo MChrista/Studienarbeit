@@ -27,7 +27,7 @@ uint32_t startaddress = 0x200000; //Startaddress for Physical Memory
 //Can be set down, but not higher than die maximum number of pages
 uint32_t memoryPageCounter = PAGES_PHYSICAL_NUM;
 
-uint32_t physicalMemoryBitfield[PAGES_PHYSICAL_NUM];
+
 
 uint32_t startOfStorage = 0x300000;
 uint32_t storagePageCounter = 0;
@@ -41,18 +41,20 @@ uint32_t page_bitfield[1024][32];
 
 uint32_t dbg_ft_addr;
 
-struct storageEntry {
+struct pageEntry {
     uint32_t pde;
     uint32_t pte;
-    uint32_t storageAddress;
+    uint32_t memAddr;
 };
 
-struct storageEntry storageBitfield[PAGES_SWAPPED_NUM];
+struct pageEntry storageBitfield[PAGES_SWAPPED_NUM];
+struct pageEntry physicalMemoryBitfield[PAGES_PHYSICAL_NUM];
 
 static pg_struct_t pg_struct;
 
 
 uint32_t setPresentBit(uint32_t, uint32_t, uint32_t);
+uint32_t removePresentBit(uint32_t, uint32_t);
 uint32_t isPresentBit(uint32_t, uint32_t);
 uint32_t getClassOfPage(uint32_t);
 uint32_t getAddressOfPageToReplace();
@@ -61,6 +63,7 @@ uint32_t getPageFrame();
 uint32_t swap(uint32_t virtAddr);
 uint32_t getIndexOfFrameOnDisk(uint32_t);
 uint32_t indexOfDiskAddrByPdePte(uint32_t, uint32_t);
+uint32_t getFreeMemoryAddress();
 void freePageInMemory(uint32_t, uint32_t);
 void copyPage(uint32_t, uint32_t);
 
@@ -101,7 +104,7 @@ pfhandler(uint32_t ft_addr) {
             if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
                 int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
                 //printf("Index in storage bitfield %i\n", indexStorageBitfield);
-                copyPage(storageBitfield[indexStorageBitfield].storageAddress, memoryAddress);
+                copyPage(storageBitfield[indexStorageBitfield].memAddr, memoryAddress);
 
 
                 //memoryAddress |= PRESENT_ON_STORAGE;
@@ -109,11 +112,7 @@ pfhandler(uint32_t ft_addr) {
             //Set flags on memory address
             memoryAddress = memoryAddress | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
             *(page_table + page_table_offset) = memoryAddress;
-            setPresentBit(page_dir_offset, page_table_offset, 1);
-
-            //Set Bit in memory bitfield
-            uint32_t indexInMemoryBitfield = (memoryAddress % startaddress) >> 12;
-            physicalMemoryBitfield[indexInMemoryBitfield] = 1;
+            setPresentBit(page_dir_offset, page_table_offset, (memoryAddress & 0xFFFFF000));
 
             pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
             pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
@@ -130,7 +129,11 @@ pfhandler(uint32_t ft_addr) {
         pg_struct.flags = 0x0;
     }
     return &pg_struct;
-}
+} //END OF PFHANDLER
+
+//==============================================================================
+//START OF MEMORY FUNCTIONS//
+//==============================================================================
 
 uint32_t
 getPageFrame() {
@@ -141,28 +144,90 @@ getPageFrame() {
      */
 
     //Maximum allowed pages in memory at actual time.
-    uint32_t limit;
-    if (memoryPageCounter < PAGES_PHYSICAL_NUM) {
-        limit = memoryPageCounter;
-    } else {
-        limit = PAGES_PHYSICAL_NUM;
-    }
-
-    for (uint32_t i = 0; i < limit; i++) {
-        if (physicalMemoryBitfield[i] == 0) {
-            uint32_t next_address = (uint32_t) (startaddress + i * 0x1000);
-            physicalMemoryBitfield[i] = 1;
-            return next_address;
-        }
+    uint32_t memoryAddress;
+    memoryAddress = getFreeMemoryAddress();
+    if(memoryAddress != 0){
+        return memoryAddress;
     }
     //There is no page left
     //get virtual address of page to replace
     uint32_t virtAddr = getAddressOfPageToReplace();
     pg_struct.vic_addr = virtAddr;
-    uint32_t memoryAddress = swap(virtAddr);
+    memoryAddress = swap(virtAddr);
     return memoryAddress;
 }
 
+uint32_t
+setPresentBit(uint32_t pde_offset, uint32_t pte_offset, uint32_t memAddr) {
+    for (uint32_t i = 0; i < memoryPageCounter; i++) {
+        if (physicalMemoryBitfield[i].pde == 0 && physicalMemoryBitfield[i].pte == 0) {
+            physicalMemoryBitfield[i].pde = pde_offset;
+            physicalMemoryBitfield[i].pte = pte_offset;
+            physicalMemoryBitfield[i].memAddr = memAddr;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+uint32_t
+removePresentBit(uint32_t pde_offset, uint32_t pte_offset) {
+    for (uint32_t i = 0; i < PAGES_PHYSICAL_NUM; i++) {
+        if (physicalMemoryBitfield[i].pde == pde_offset && physicalMemoryBitfield[i].pte == pte_offset) {
+            physicalMemoryBitfield[i].pde = 0;
+            physicalMemoryBitfield[i].pte = 0;
+            physicalMemoryBitfield[i].memAddr = 0;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+uint32_t
+isPresentBit(uint32_t pde_offset, uint32_t pte_offset) {
+    for (uint32_t i = 0; i < memoryPageCounter; i++) {
+        if (physicalMemoryBitfield[i].pde == pde_offset && physicalMemoryBitfield[i].pte == pte_offset) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+uint32_t
+getFreeMemoryAddress(){
+    for (uint32_t i = 0; i < PAGES_PHYSICAL_NUM; i++) {
+        if (physicalMemoryBitfield[i].pde == 0 && physicalMemoryBitfield[i].pte == 0) {
+            return ((uint32_t) (PAGES_PHYSICAL_START + i * PAGE_SIZE));
+        }
+    }
+    return 0;
+}
+
+void
+freePageInMemory(uint32_t pde, uint32_t pte) {
+    uint32_t virtAddr = 0;
+    virtAddr |= pde << 22;
+    virtAddr |= pte << 12;
+    swap(virtAddr);
+}
+
+void
+freeAllPages() {
+    //For all present bits, do free page in Memory
+    for (uint32_t pde = 0; pde < 1024; pde++) {
+        for (uint32_t pte = 0; pte < 1024; pte++) {
+            if (isPresentBit(pde, pte)) {
+                if (!(pde == 0 && pte <= 512)) {
+                    freePageInMemory(pde, pte);
+                }
+            }
+        }
+    }
+}
+
+//==============================================================================
+//END OF MEMORY FUNCTIONS//
+//==============================================================================
 
 uint32_t dbg_copy_src_addr;
 uint32_t dbg_copy_dst_addr;
@@ -184,6 +249,12 @@ void copyPage(uint32_t src_address, uint32_t dst_address) {
 #endif
 
 }
+
+
+
+//==============================================================================
+//START OF DISK FUNCTIONS//
+//==============================================================================
 
 uint32_t indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte) {
     for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
@@ -240,7 +311,7 @@ uint32_t swap(uint32_t virtAddr) {
         if ((flags & PAGE_IS_DIRTY) == PAGE_IS_DIRTY) {
             int pageAddrOnStorageIndex = indexOfDiskAddrByPdePte(pde, pte);
             // Get address of page copy on disk
-            storageAddr = storageBitfield[pageAddrOnStorageIndex].storageAddress;
+            storageAddr = storageBitfield[pageAddrOnStorageIndex].memAddr;
             // Overwrite copy on disk with modified page 
             copyPage(memoryAddr, storageAddr);
             pg_struct.sec_addr = storageAddr;
@@ -254,7 +325,7 @@ uint32_t swap(uint32_t virtAddr) {
         uint32_t index = getIndexOfFrameOnDisk(storageAddr);
         storageBitfield[index].pde = pde;
         storageBitfield[index].pte = pte;
-        storageBitfield[index].storageAddress = storageAddr;
+        storageBitfield[index].memAddr = storageAddr;
         copyPage(memoryAddr, storageAddr);
 
     }
@@ -263,70 +334,15 @@ uint32_t swap(uint32_t virtAddr) {
     page_table[pte] |= PAGE_IS_SWAPPED;
 
     // Reset present bit
-    setPresentBit(pde, pte, 0);
+    removePresentBit(pde, pte);
 
-    //Reset in memory Bitfield
-    uint32_t indexInMemoryBitfield = (memoryAddr % startaddress) >> 12;
-    //printf("Before reseting bitfield entry with index: %d\n", indexInMemoryBitfield);
-    physicalMemoryBitfield[indexInMemoryBitfield] = 0;
     page_table[pte] &= 0xFFFFFFFE;
 
     dbg_swap_result = memoryAddr;
 
     return memoryAddr;
 
-}
-
-uint32_t
-setPresentBit(uint32_t pde_offset, uint32_t pte_offset, uint32_t bool) {
-    if (pde_offset > 1023 || pte_offset > 1023) {
-        //Offsets are not in range
-        return 0;
-    } else {
-        uint32_t index = pte_offset / 32;
-        if (bool == 0) {
-            //Set 0 in bitfield
-            page_bitfield[pde_offset][index] &= (~(PAGE_IS_PRESENT << (pte_offset % 32)));
-        } else {
-            //Set 1 in bitfield
-            page_bitfield[pde_offset][index] |= (PAGE_IS_PRESENT << (pte_offset % 32));
-        }
-        return 1;
-    }
-}
-
-void
-freePageInMemory(uint32_t pde, uint32_t pte) {
-    uint32_t virtAddr = 0;
-    virtAddr |= pde << 22;
-    virtAddr |= pte << 12;
-    swap(virtAddr);
-}
-
-void
-freeAllPages() {
-    //For all present bits, do free page in Memory
-    for (uint32_t pde = 0; pde < 1024; pde++) {
-        for (uint32_t pte = 0; pte < 1024; pte++) {
-            if (isPresentBit(pde, pte)) {
-                if (!(pde == 0 && pte <= 512)) {
-                    freePageInMemory(pde, pte);
-                }
-            }
-        }
-    }
-}
-
-uint32_t
-isPresentBit(uint32_t pde_offset, uint32_t pte_offset) {
-    if (pde_offset > 1023 || pte_offset > 1023) {
-        //Offsets are not in range
-        return 0;
-    } else {
-        int index = pte_offset / 32;
-        return ((page_bitfield[pde_offset][index] & (PAGE_IS_PRESENT << (pte_offset % 32))) != 0);
-    }
-}
+} //END OF SWAP
 
 uint32_t
 getAddressOfPageToReplace() {
@@ -397,7 +413,7 @@ getAddressOfPageToReplace() {
     virtAddr |= replace_pde_offset << 22;
     virtAddr |= replace_pte_offset << 12;
     return virtAddr;
-}
+} //END OF NRU
 
 uint32_t getClassOfPage(uint32_t flags) {
     //Bit 5: accesed
@@ -417,6 +433,12 @@ uint32_t getClassOfPage(uint32_t flags) {
     }
 }
 
+//==============================================================================
+//END OF DISK FUNCTIONS//
+//==============================================================================
+
+
+
 
 #ifndef __DHBW_KERNEL__
 
@@ -430,6 +452,10 @@ int myprintf(const char * format, ...) {
 
 }
 #endif
+
+//==============================================================================
+//Initialize paging//
+//==============================================================================
 
 uint32_t*
 init_paging() {
@@ -450,14 +476,16 @@ init_paging() {
 
     //set physical memory bitfield to blank
     for (uint32_t i = 0; i < PAGES_PHYSICAL_NUM; i++) {
-        physicalMemoryBitfield[i] = 0;
+        physicalMemoryBitfield[i].pde = 0;
+        physicalMemoryBitfield[i].pte = 0;
+        physicalMemoryBitfield[i].memAddr = 0;
     }
 
     //set storage bitfield to blank
     for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
         storageBitfield[i].pde = 0;
         storageBitfield[i].pte = 0;
-        storageBitfield[i].storageAddress = 0;
+        storageBitfield[i].memAddr = 0;
     }
 
     //Copy Kernel to First Page Table
@@ -481,7 +509,6 @@ init_paging() {
             kernel_page_table[i] = (uint32_t) (i * 0x1000 + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
         }
 #endif
-        setPresentBit(0, i, 1);
     }
 #ifndef __DHBW_KERNEL__
     myprintf("PTE is: %d Memory Address is: %08X\n", PTE(SWAPPED_START_ADDR), SWAPPED_START_ADDR);
@@ -490,7 +517,7 @@ init_paging() {
     myprintf("Memory Address %08X\n", (SWAPPED_START_ADDR + PAGES_SWAPPED_NUM * PAGE_SIZE));
 #endif
     //Map swap space
-    for (uint32_t i = 256; i < (256+PAGES_SWAPPED_NUM); i++){
+    for (uint32_t i = 256; i < (256 + PAGES_SWAPPED_NUM); i++) {
         kernel_page_table[i] = (uint32_t) (PAGES_SWAPPED_START + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
     }
 
@@ -506,7 +533,7 @@ init_paging() {
 #endif
     //printf("Address of page Directory %p\n",page_directory);
     return page_directory;
-}
+} //END OF INIT PAGING
 
 
 
