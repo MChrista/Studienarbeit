@@ -37,6 +37,7 @@ enable_paging:
         mov     %cr0, %eax              # current machine status
         bts     $31, %eax               # turn on PG-bit's image
         bts     $30, %eax               # disable caching
+        bts     $16, %eax               # enable write protection
         mov     %eax, %cr0              # enable page-mappings
         jmp     .+2                     # flush prefetch queue
 

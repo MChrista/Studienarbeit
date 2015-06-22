@@ -95,6 +95,8 @@ isrPFE:
         # update page fault counter
         #----------------------------------------------------------
         incl    (pgftcnt)
+        testb   $1, 64(%ebp)            # pf caused by not present page?
+        jnz     .Lprotviol
 
         mov     %cr2, %eax              # faulting address
         invlpg  %gs:(%eax)              # invalidate TLB
@@ -142,6 +144,7 @@ isrPFE:
         cmpl    $0xffffffff, 16(%ebx)
         jne     .Lpfe_exit
 
+.Lprotviol:
         #----------------------------------------------------------
         # write the faulting address into the EAX value on the stack
         #----------------------------------------------------------
