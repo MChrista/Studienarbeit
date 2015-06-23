@@ -106,13 +106,12 @@ pfhandler(uint32_t ft_addr) {
             
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
-                int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
-                //printf("Index in storage bitfield %i\n", indexStorageBitfield);
                 
+                int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
                 uint32_t strVirtAddr = (storageBitfield[indexStorageBitfield].pde << PDE_SHIFT)
                                      + (storageBitfield[indexStorageBitfield].pte << PTE_SHIFT);
                 
-                copyPage(strVirtAddr, ft_addr & PAGE_ADDR_MASK /*ft_addr & PAGE_ADDR_MASK*/);
+                copyPage(strVirtAddr, ft_addr & PAGE_ADDR_MASK);
 
 
                 //memoryAddress |= PRESENT_ON_STORAGE;
@@ -239,7 +238,7 @@ uint32_t dbg_copy_dst_addr;
 uint32_t unsusedPar;
 
 void copyPage(uint32_t src_address, uint32_t dst_address) {
-    unsusedPar = src_address + dst_address;
+    //unsusedPar = src_address + dst_address;
 #ifdef __DHBW_KERNEL__
     /*
     uint32_t *src = (uint32_t *) (  src_address - (uint32_t) &LD_DATA_START  )  ;
@@ -247,6 +246,8 @@ void copyPage(uint32_t src_address, uint32_t dst_address) {
     for (int i = 0; i < 1024; i++) {
      *(dst + i) = *(src + i);
     }*/
+    src_address &= 1;
+    dst_address &= 1;
 
 #else
     unsusedPar = src_address + dst_address;
