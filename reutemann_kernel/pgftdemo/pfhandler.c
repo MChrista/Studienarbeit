@@ -100,19 +100,22 @@ pfhandler(uint32_t ft_addr) {
             uint32_t memoryAddress = getPageFrame();
             memoryAddress &= 0xFFFFF000;
 
-            //If present on storage bit is set, load page from storage in memory
-            if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
-                int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
-                //printf("Index in storage bitfield %i\n", indexStorageBitfield);
-                copyPage(storageBitfield[indexStorageBitfield].memAddr, memoryAddress);
-
-
-                //memoryAddress |= PRESENT_ON_STORAGE;
-            }
             //Set flags on memory address
             memoryAddress = memoryAddress | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
             *(page_table + page_table_offset) = memoryAddress;
             setPresentBit(page_dir_offset, page_table_offset, (memoryAddress & 0xFFFFF000));
+            
+            //If present on storage bit is set, load page from storage in memory
+            if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
+                int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
+                //printf("Index in storage bitfield %i\n", indexStorageBitfield);
+                uint32_t oldVirtualAddr = storageBitfield[indexStorageBitfield].pde << PDE_SHIFT
+                                        + storageBitfield[indexStorageBitfield].pte << PTE_SHIFT;
+                copyPage(storageBitfield[indexStorageBitfield].memAddr, ft_addr);
+
+
+                //memoryAddress |= PRESENT_ON_STORAGE;
+            }
 
             pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
             pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
