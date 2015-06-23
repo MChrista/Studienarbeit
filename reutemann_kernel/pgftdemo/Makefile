@@ -13,13 +13,20 @@ LIBKERNEL   = ../libkernel/libkernel.a
 LDSCRIPT    = ldscript
 PROG        = pgftdemo
 
+SUBDIRS     = tests
+
 TARGETS     = $(PROG).flp $(PROG).sym
 OBJS        = $(PROG).o pfhandler.o paging.o isrpfe.o irqpit.o kgetc.o kgets.o monitor.o
 
-.PHONY: all
+.PHONY: all subdirs $(SUBDIRS)
 .SECONDARY:
 
-all: $(TARGETS)
+all: $(TARGETS) subdirs
+
+subdirs: $(SUBDIRS)
+
+$(SUBDIRS): 
+	$(MAKE) -C $@
 
 $(PROG).flp : $(PROG).bin $(BOOTLOADER)
 	$(call update-image,$@,$<,$(FLP_USF_POS))
