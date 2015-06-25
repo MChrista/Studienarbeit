@@ -87,7 +87,8 @@ _start:
         #----------------------------------------------------------
         # setup real-mode data segments
         #----------------------------------------------------------
-        mov     $0x2000, %ax
+        mov     $LD_DATA_START, %eax
+        shr     $4, %eax
         mov     %ax, %ds
         mov     %ax, %es
         mov     %ax, %gs
@@ -170,7 +171,8 @@ rm:
         #----------------------------------------------------------
         # restore real-mode interrupt vector table
         #----------------------------------------------------------
-        mov     $0x2000, %ax
+        mov     $LD_DATA_START, %eax
+        shr     $4, %eax
         mov     %ax, %ds
         lidt    rmIVT
 
@@ -403,7 +405,7 @@ configure_16550_uart:
 # protected mode stack pointer and segment
 #------------------------------------------------------------------
         .align  4
-pmstack:.long   0x4000                  # 48-bit ss:esp (32-bit PM)
+pmstack:.long   0x50000                 # 48-bit ss:esp (32-bit PM)
         .word   privSS
 
 #------------------------------------------------------------------
