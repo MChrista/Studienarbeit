@@ -11,6 +11,7 @@ LD          = ld
 AR          = ar
 AROPT       = rcsv
 ASOPT       = -g --32 -I../inc
+ASOPT      += --defsym __DHBW_KERNEL__=1
 NASM        = nasm
 NASMOPT     = -g -f elf -F dwarf
 CFLAGS      = -m32 -Wall -Werror -Wextra -fno-omit-frame-pointer -g -O2 -std=gnu99 -D__DHBW_KERNEL__
@@ -43,6 +44,10 @@ endef
 
 %.sym : %.elf
 	objcopy --only-keep-debug $< $@
+
+%.o : %.c
+	@echo CC $<
+	@$(CC) $(CFLAGS) -o $*.o -c $<
 
 %.o %.lst : %.s
 	@echo AS $<

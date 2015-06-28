@@ -124,7 +124,7 @@ theIDT:
         .zero   0x80*8 - (.-theIDT)
         #----------------------------------------------------------
         # Linux SuperVisor-Calls (0x80) gate-descriptor
-        .word   0x0000, 0x000, 0x0000, 0x0000 # undefined
+        .word   isrSVC, privCS, 0xEE00, 0x0000
         #----------------------------------------------------------
         .zero   256*8 - (.-theIDT)
         .equ    limIDT, (.-theIDT)-1    # this IDT's segment_limit

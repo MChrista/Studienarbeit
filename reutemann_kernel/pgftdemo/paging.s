@@ -37,6 +37,7 @@ enable_paging:
         mov     %cr0, %eax              # current machine status
         bts     $31, %eax               # turn on PG-bit's image
         bts     $30, %eax               # disable caching
+        bts     $16, %eax               # enable write protection
         mov     %eax, %cr0              # enable page-mappings
         jmp     .+2                     # flush prefetch queue
 
@@ -117,6 +118,61 @@ invalidate_addr:
 
         pop     %gs
         pop     %eax
+        leave
+        ret
+
+
+#-------------------------------------------------------------------
+# FUNCTION:   is_page_present
+#
+# PURPOSE:    Checks whether the given linear address is mapped to
+#             a page frame or not
+#
+# C Call:     int is_page_present(unsigned long addr)
+#
+# PARAMETERS: (via stack - C style)
+#             addr - linear address to check
+#
+# RETURN:     1: present, 0: not present
+#
+#-------------------------------------------------------------------
+        .type   is_page_present, @function
+        .globl  is_page_present
+is_page_present:
+        enter   $0, $0
+        push    %edx
+        push    %esi
+
+        # get page directory address
+        mov     %cr3, %esi
+        # segmented page directory address
+        sub     $LD_DATA_START, %esi
+
+        # load linear address from stack
+        mov     8(%ebp), %edx
+        # initialise default return value
+        xor     %eax, %eax
+        # get page directory entry
+        shr     $22, %edx
+        mov     (%esi,%edx,4), %esi
+        test    $1, %esi
+        jz      .Lend
+
+        # load linear address from stack
+        mov     8(%ebp), %edx
+        # mask paging flags
+        and     $0xfffff000, %esi
+        # get page table entry
+        shr     $12, %edx
+        and     $0x3ff, %edx
+        lea     (%esi,%edx,4), %esi
+        # segmented page table address
+        sub     $LD_DATA_START, %esi
+        mov     (%esi), %eax
+        and     $1, %eax
+.Lend:
+        pop     %esi
+        pop     %edx
         leave
         ret
 

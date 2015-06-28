@@ -55,7 +55,7 @@ SECTIONS
         data = .; _data = .; __data = .;
         sdata = ADDR(.data);
         *(.data)
-        *(.rodata)
+        *(.rodata*)
         PROVIDE(edata = .);
         . = ALIGN(16);
     }

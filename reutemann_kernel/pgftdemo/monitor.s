@@ -5,7 +5,7 @@
         .section        .data
 
 mon_addr:
-        .long 0
+        .long 0, 0, 0, 0, 0, 0, 0, 0
 
 errmsg: .ascii  "Syntax Error\n"
         .equ    errmsg_len, (.-errmsg)
@@ -15,6 +15,7 @@ hlpmsg: .ascii  "Monitor Commands:\n"
         .ascii  "  Q           - Quit monitor\n"
         .ascii  "  M           - Show all mapped non-kernel pages\n"
         .ascii  "  C           - Release allocated pages (except kernel)\n"
+        .ascii  "  D ADDR NUM  - Dump NUM words beginning at address ADDR\n"
         .ascii  "  P ADDR      - Invalidate TLB entry for virtual address ADDR\n"
         .ascii  "  R ADDR      - Read from address ADDR\n"
         .ascii  "  F ADDR WORD - Fill page belonging to ADDR with 32-bit word WORD,\n"
@@ -24,6 +25,9 @@ hlpmsg: .ascii  "Monitor Commands:\n"
         .ascii  "Leading zeros can be omitted\n"
         .ascii  "\n"
         .equ    hlpmsg_len, (.-hlpmsg)
+
+dumpmsg:.ascii  "________ ________ ________ ________\n"
+        .equ    dumpmsg_len, (.-dumpmsg)
 
 addrmsg:.ascii  "________: ________\n"
         .equ    addrmsg_len, (.-addrmsg)
@@ -45,9 +49,6 @@ run_monitor:
         enter   $268, $0
         pusha
         push    %gs
-
-        lea     -256(%ebp), %esi
-        mov     %esi, mon_addr
 
         #----------------------------------------------------------
         # setup GS segment register for linear addressing
@@ -139,6 +140,27 @@ run_monitor:
         mov     -260(%ebp), %ecx
         jmp     .Lloop
 .Ldumpaddr:
+        inc     %esi
+        sub     $8, %esp
+        # read linear address
+        call    hex2int
+        # put linear address onto stack
+        mov     %eax, (%esp)
+        mov     %eax, mon_addr
+
+        # read number of words
+        call    hex2int
+        # put number of words onto stack
+        mov     %eax, 4(%esp)
+        mov     %eax, mon_addr+4
+
+        #mov     8(%ebp), %ebx    # linear address
+        #mov     %ebx, mon_addr
+        #mov     12(%ebp), %edx   # number of words
+        #mov     %edx, mon_addr+4
+
+        call    dump_memory
+        add     $8, %esp
         jmp     .Lloop
 .Lfilladdr:
         mov     %ecx, -260(%ebp)
@@ -175,6 +197,55 @@ run_monitor:
         invlpg  %gs:(%eax)
         jmp     .Lloop
 .Lmonitor_exit:
+        pop     %gs
+        popa
+        leave
+        ret
+
+
+        .type   dump_memory, @function
+        .global dump_memory
+dump_memory:
+        enter   $4, $0
+        pusha
+        push    %gs
+
+        #----------------------------------------------------------
+        # setup GS segment register for linear addressing
+        #----------------------------------------------------------
+        mov     $linDS, %ax
+        mov     %ax, %gs
+
+        mov     8(%ebp), %ebx    # linear address
+        mov     12(%ebp), %edx   # number of words
+        # cut number to 12-bit
+        and     $0x1fff, %edx
+        mov     %edx, -4(%ebp)   # store number of words
+        xor     %edx, %edx       # counter
+        lea     dumpmsg, %esi    # message pointer
+        mov     %esi, %edi
+.Ldumploop:
+        mov     %gs:(%ebx,%edx,4), %eax
+        mov     $8, %ecx              # number of output digits
+        call    int_to_hex
+        add     $9, %edi
+        inc     %edx
+        test    $3, %edx              # multiple of 4?
+        jnz     .Lnonewline
+        mov     %esi, %edi
+        mov     $dumpmsg_len, %ecx    # message-length
+        call    screen_write
+.Lnonewline:
+        cmp     %edx, -4(%ebp)
+        jne     .Ldumploop
+        and     $3, %edx
+        jz      .Ldumpfinished
+        mov     %esi, %edi
+        lea     (%edx,%edx,8), %ecx   # message length
+        movb    $'\n', -1(%esi,%ecx,1)
+        call    screen_write
+        movb    $' ', -1(%esi,%ecx,1)
+.Ldumpfinished:
         pop     %gs
         popa
         leave
