@@ -1,4 +1,5 @@
 #include "pfhandler.h"
+#include "kprintf.h"
 
 #ifdef __DHBW_KERNEL__
 #include<stdarg.h>
@@ -97,15 +98,24 @@ pfhandler(uint32_t ft_addr) {
              */
             uint32_t memoryAddress = getPageFrame();
             memoryAddress &= 0xFFFFF000;
-
+#ifdef __DHBW_KERNEL__
+            kprintf("Testprint %08X\n", ft_addr);
+#endif
+            //TODO: Save swap bit
             memoryAddress = memoryAddress | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
+            
+            if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
+                memoryAddress |= PAGE_IS_SWAPPED;
+            }
+            
             *(page_table + page_table_offset) = memoryAddress;
             setPresentBit(page_dir_offset, page_table_offset, (memoryAddress & 0xFFFFF000));
 
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
-                
-                uint32_t strVirtAddr = getVirtAddrOfFrameOnDisk(page_dir_offset,page_table_offset);
+
+
+                uint32_t strVirtAddr = getVirtAddrOfFrameOnDisk(page_dir_offset, page_table_offset);
 
                 copyPage(strVirtAddr, ft_addr & PAGE_ADDR_MASK);
                 //memoryAddress |= PRESENT_ON_STORAGE;
@@ -260,7 +270,6 @@ void copyPage(uint32_t src_address, uint32_t dst_address) {
 
 #else
     unsusedPar = src_address + dst_address;
-    myprintf("Copying page from 0x%08X to 0x%08X.\n", src_address, dst_address);
 #endif
 
 }
