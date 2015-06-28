@@ -36,9 +36,6 @@ uint32_t storagePageCounter = 0;
 uint32_t replace_pde_offset = 0;
 uint32_t replace_pte_offset = 512;
 
-//marks reserved pages with an bit. This array is needed to easy find an page to replace
-uint32_t page_bitfield[1024][32];
-
 uint32_t dbg_ft_addr;
 
 struct pageEntry {
@@ -61,9 +58,9 @@ uint32_t getAddressOfPageToReplace();
 uint32_t isPresentBit(uint32_t, uint32_t);
 uint32_t getPageFrame();
 uint32_t swap(uint32_t virtAddr);
-uint32_t getIndexOfFrameOnDisk(uint32_t);
-uint32_t indexOfDiskAddrByPdePte(uint32_t, uint32_t);
 uint32_t getFreeMemoryAddress();
+uint32_t getVirtAddrOfFrameOnDisk(uint32_t, uint32_t);
+uint32_t getIndexInStorageBitfield(uint32_t, uint32_t);
 void freePageInMemory(uint32_t, uint32_t);
 void copyPage(uint32_t, uint32_t);
 void clearPage(uint32_t);
@@ -107,14 +104,10 @@ pfhandler(uint32_t ft_addr) {
 
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
-
-                int indexStorageBitfield = indexOfDiskAddrByPdePte(page_dir_offset, page_table_offset);
-                uint32_t strVirtAddr = (storageBitfield[indexStorageBitfield].pde << PDE_SHIFT)
-                        + (storageBitfield[indexStorageBitfield].pte << PTE_SHIFT);
+                
+                uint32_t strVirtAddr = getVirtAddrOfFrameOnDisk(page_dir_offset,page_table_offset);
 
                 copyPage(strVirtAddr, ft_addr & PAGE_ADDR_MASK);
-
-
                 //memoryAddress |= PRESENT_ON_STORAGE;
             }
             //Set flags on memory address
@@ -228,7 +221,7 @@ freeAllPages() {
         pde = physicalMemoryBitfield[i].pde;
         pte = physicalMemoryBitfield[i].pte;
         if (isPresentBit(pde, pte)) {
-            
+
             virtAddr |= pde << PDE_SHIFT;
             virtAddr |= pte << PTE_SHIFT;
             clearPage(virtAddr);
@@ -239,8 +232,8 @@ freeAllPages() {
             page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
 #endif
             page_table[pte] &= 0xFFFFFFFE;
-            
-            removePresentBit(pde,pte);
+
+            removePresentBit(pde, pte);
 
         }
     }
@@ -257,13 +250,13 @@ uint32_t unsusedPar;
 void copyPage(uint32_t src_address, uint32_t dst_address) {
     //unsusedPar = src_address + dst_address;
 #ifdef __DHBW_KERNEL__
-    /*uint32_t *src = (uint32_t *)((src_address & PAGE_ADDR_MASK) - (uint32_t) &LD_DATA_START);
-    uint32_t *dst = (uint32_t *)((dst_address & PAGE_ADDR_MASK) - (uint32_t) &LD_DATA_START);
-    for(int i=0;i<(PAGE_SIZE/4);i++){
-     *(dst++) = *(src++);
-    }*/
-    src_address &= 1;
-    dst_address &= 1;
+    uint32_t *src = (uint32_t *) ((src_address & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
+    uint32_t *dst = (uint32_t *) ((dst_address & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
+    for (int i = 0; i < (PAGE_SIZE / 4); i++) {
+        *(dst++) = *(src++);
+    }
+    //src_address &= 1;
+    //dst_address &= 1;
 
 #else
     unsusedPar = src_address + dst_address;
@@ -289,27 +282,24 @@ void clearPage(uint32_t address) {
 //START OF DISK FUNCTIONS//
 //==============================================================================
 
-uint32_t indexOfDiskAddrByPdePte(uint32_t pde, uint32_t pte) {
+uint32_t getVirtAddrOfFrameOnDisk(uint32_t pde, uint32_t pte) {
     for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
         if (storageBitfield[i].pde == pde && storageBitfield[i].pte == pte) {
-            return i;
+            //PDE is zero
+            return ((SWAPPED_START_ADDR + i) << PTE_SHIFT);
         }
-    }
-    return PAGES_SWAPPED_NUM;
-}
-
-uint32_t getFreeFrameOnDisk() {
-    uint32_t indexOfFreeFrame = indexOfDiskAddrByPdePte(0, 0);
-    //printf("Index of Frame on Disk: %i\n", indexOfFreeFrame);
-    if (indexOfFreeFrame != PAGES_SWAPPED_NUM) { //In case of error
-        return (uint32_t) (startOfStorage + indexOfFreeFrame * 0x1000);
     }
     return INVALID_ADDR;
 }
 
-uint32_t getIndexOfFrameOnDisk(uint32_t storageAddr) {
-    uint32_t indexStorageBitfield = (storageAddr % startOfStorage) >> 12;
-    return indexStorageBitfield;
+uint32_t getIndexInStorageBitfield(uint32_t pde, uint32_t pte) {
+    for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
+        if (storageBitfield[i].pde == pde && storageBitfield[i].pte == pte) {
+            //PDE is zero
+            return i;
+        }
+    }
+    return INVALID_INDEX;
 }
 
 uint32_t dbg_swap_addr;
@@ -340,26 +330,38 @@ uint32_t swap(uint32_t virtAddr) {
     if ((flags & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
         //print_debug("\nSwap with page in storage\n");
         //printf("Memory Address is %08X\n\n", memoryAddr);
+
+
         // Check if page was modified, only save it then
         if ((flags & PAGE_IS_DIRTY) == PAGE_IS_DIRTY) {
-            int pageAddrOnStorageIndex = indexOfDiskAddrByPdePte(pde, pte);
+            //int pageAddrOnStorageIndex = indexOfDiskAddrByPdePte(pde, pte);
             // Get address of page copy on disk
-            storageAddr = storageBitfield[pageAddrOnStorageIndex].memAddr;
-            // Overwrite copy on disk with modified page 
-            copyPage(memoryAddr, storageAddr);
-            pg_struct.sec_addr = storageAddr;
+            //storageAddr = storageBitfield[pageAddrOnStorageIndex].memAddr;
+            storageAddr = getVirtAddrOfFrameOnDisk(pde, pte);
+
+            if (storageAddr != INVALID_ADDR) {
+                // Overwrite copy on disk with modified page 
+                copyPage(virtAddr, storageAddr);
+                pg_struct.sec_addr = storageAddr;
+            }
+
+
         }
     } else {
         //print_debug("\nSwap without page on storage\n");
         // Get free storage address to save page to
-        storageAddr = getFreeFrameOnDisk();
+
         //printf("Storage Address is: %08x\n", storageAddr);
-        pg_struct.sec_addr = storageAddr;
-        uint32_t index = getIndexOfFrameOnDisk(storageAddr);
+
+        //Get free page on Storage
+        uint32_t index = getIndexInStorageBitfield(0, 0);
         storageBitfield[index].pde = pde;
         storageBitfield[index].pte = pte;
-        storageBitfield[index].memAddr = storageAddr;
-        copyPage(memoryAddr, storageAddr);
+
+        storageAddr = getVirtAddrOfFrameOnDisk(pde, pte);
+        pg_struct.sec_addr = storageAddr;
+        copyPage(virtAddr, storageAddr);
+        clearPage(virtAddr);
 
     }
 
@@ -500,25 +502,11 @@ init_paging() {
         *(page_directory + i) = *(page_directory + i) & 0x00000000;
     }
 
-    //set Bitfield to blank
-    for (uint32_t i = 0; i < 1024; i++) {
-        for (uint32_t j = 0; j < 32; j++) {
-            page_bitfield[i][j] = 0;
-        }
-    }
-
     //set physical memory bitfield to blank
     for (uint32_t i = 0; i < PAGES_PHYSICAL_NUM; i++) {
         physicalMemoryBitfield[i].pde = 0;
         physicalMemoryBitfield[i].pte = 0;
         physicalMemoryBitfield[i].memAddr = 0;
-    }
-
-    //set storage bitfield to blank
-    for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
-        storageBitfield[i].pde = 0;
-        storageBitfield[i].pte = 0;
-        storageBitfield[i].memAddr = 0;
     }
 
     //Copy Kernel to First Page Table
@@ -545,8 +533,11 @@ init_paging() {
     }
 
     //Map swap space
-    for (uint32_t i = 256; i < (256 + PAGES_SWAPPED_NUM); i++) {
-        kernel_page_table[i] = (uint32_t) (PAGES_SWAPPED_START + (i - 256) * PAGE_SIZE + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
+    for (uint32_t i = SWAP_START_ADDR; i < (SWAP_START_ADDR + PAGES_SWAPPED_NUM); i++) {
+        storageBitfield[i - SWAP_START_ADDR].memAddr = (uint32_t) (PAGES_SWAPPED_START + (i - SWAP_START_ADDR) * PAGE_SIZE);
+        storageBitfield[i - SWAP_START_ADDR].pde = 0;
+        storageBitfield[i - SWAP_START_ADDR].pte = 0;
+        kernel_page_table[i] = (uint32_t) (PAGES_SWAPPED_START + (i - SWAP_START_ADDR) * PAGE_SIZE + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
     }
 
 
