@@ -1,8 +1,9 @@
 #include "pfhandler.h"
-#include "kprintf.h"
+
 
 #ifdef __DHBW_KERNEL__
 #include<stdarg.h>
+#include "kprintf.h"
 // Linear address of data segment, defined in ldscript
 // use only in Kernel context with x86 segmentation
 // being enabled
@@ -11,7 +12,7 @@ extern uint32_t LD_IMAGE_START;
 #else
 #include<stdarg.h>
 #include <stdio.h>
-int myprintf(const char*, ...);
+int kprintf(const char*, ...);
 #endif
 /*
  * Declaration of Page Directory and Page tables
@@ -65,6 +66,7 @@ uint32_t getIndexInStorageBitfield(uint32_t, uint32_t);
 void freePageInMemory(uint32_t, uint32_t);
 void copyPage(uint32_t, uint32_t);
 void clearPage(uint32_t);
+void invalidate_addr(uint32_t);
 
 pg_struct_t *
 pfhandler(uint32_t ft_addr) {
@@ -98,27 +100,26 @@ pfhandler(uint32_t ft_addr) {
              */
             uint32_t memoryAddress = getPageFrame();
             memoryAddress &= 0xFFFFF000;
-#ifdef __DHBW_KERNEL__
-            kprintf("Testprint %08X\n", ft_addr);
-#endif
+
+
             //TODO: Save swap bit
             memoryAddress = memoryAddress | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
-            
+
             if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
                 memoryAddress |= PAGE_IS_SWAPPED;
             }
-            
+
             *(page_table + page_table_offset) = memoryAddress;
             setPresentBit(page_dir_offset, page_table_offset, (memoryAddress & 0xFFFFF000));
 
             //If present on storage bit is set, load page from storage in memory
             if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
 
-
                 uint32_t strVirtAddr = getVirtAddrOfFrameOnDisk(page_dir_offset, page_table_offset);
 
                 copyPage(strVirtAddr, ft_addr & PAGE_ADDR_MASK);
-                //memoryAddress |= PRESENT_ON_STORAGE;
+                //Remove Dirty Bit, because this page wasn't changed
+                *(page_table + page_table_offset) &= 0xFFFFFFBF;
             }
             //Set flags on memory address
 
@@ -242,7 +243,9 @@ freeAllPages() {
             page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
 #endif
             page_table[pte] &= 0xFFFFFFFE;
-
+#ifdef __DHBW_KERNEL__
+            invalidate_addr(virtAddr);
+#endif
             removePresentBit(pde, pte);
 
         }
@@ -339,11 +342,12 @@ uint32_t swap(uint32_t virtAddr) {
     if ((flags & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
         //print_debug("\nSwap with page in storage\n");
         //printf("Memory Address is %08X\n\n", memoryAddr);
-
+        kprintf("Page is swapped\n");
 
         // Check if page was modified, only save it then
         if ((flags & PAGE_IS_DIRTY) == PAGE_IS_DIRTY) {
             //int pageAddrOnStorageIndex = indexOfDiskAddrByPdePte(pde, pte);
+            kprintf("Page is diry and swapped\n");
             // Get address of page copy on disk
             //storageAddr = storageBitfield[pageAddrOnStorageIndex].memAddr;
             storageAddr = getVirtAddrOfFrameOnDisk(pde, pte);
@@ -405,6 +409,7 @@ getAddressOfPageToReplace() {
     uint32_t class;
     uint32_t flags;
     uint32_t tmp_class;
+    uint32_t virtAddr;
 
     //Save pde and pte of last replace
     start_pde = replace_pde_offset;
@@ -431,7 +436,12 @@ getAddressOfPageToReplace() {
         }
         if (isPresentBit(counter_pde, counter_pte)) {
             //Found present page
+            //First invalidate TLB to have actual flags in page entry
+            virtAddr = 0;
+            virtAddr |= counter_pde << 22;
+            virtAddr |= counter_pte << 12;
 #ifdef __DHBW_KERNEL__
+            invalidate_addr(virtAddr);
             temp_page_table = (uint32_t *) ((page_directory[counter_pde] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
 #else
             temp_page_table = (uint32_t *) (page_directory[counter_pde] & 0xFFFFF000);
@@ -440,6 +450,7 @@ getAddressOfPageToReplace() {
             tmp_class = getClassOfPage(flags);
             //Remove access bit
             *(temp_page_table + counter_pte) &= 0xFFFFFFDF;
+
             //If class of page is lower than actual class, save pde and pte
             if (class > tmp_class) {
                 class = tmp_class;
@@ -453,7 +464,7 @@ getAddressOfPageToReplace() {
 
 
     //Create a virtual address with the indices of the page which is to replace
-    uint32_t virtAddr = 0;
+    virtAddr = 0;
     virtAddr |= replace_pde_offset << 22;
     virtAddr |= replace_pte_offset << 12;
     return virtAddr;
@@ -486,7 +497,7 @@ uint32_t getClassOfPage(uint32_t flags) {
 
 #ifndef __DHBW_KERNEL__
 
-int myprintf(const char * format, ...) {
+int kprintf(const char * format, ...) {
     int rtn = 0;
     va_list args;
     va_start(args, format);
