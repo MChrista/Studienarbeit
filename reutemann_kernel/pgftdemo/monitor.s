@@ -4,9 +4,6 @@
 #==================================================================
         .section        .data
 
-mon_addr:
-        .long 0, 0, 0, 0, 0, 0, 0, 0
-
 errmsg: .ascii  "Syntax Error\n"
         .equ    errmsg_len, (.-errmsg)
 
@@ -16,6 +13,7 @@ hlpmsg: .ascii  "Monitor Commands:\n"
         .ascii  "  M           - Show all mapped non-kernel pages\n"
         .ascii  "  C           - Release allocated pages (except kernel)\n"
         .ascii  "  D ADDR NUM  - Dump NUM words beginning at address ADDR\n"
+        .ascii  "  X ADDR NUM  - Calculate CRC32 for NUM words starting at address ADDR\n"
         .ascii  "  P ADDR      - Invalidate TLB entry for virtual address ADDR\n"
         .ascii  "  R ADDR      - Read from address ADDR\n"
         .ascii  "  F ADDR WORD - Fill page belonging to ADDR with 32-bit word WORD,\n"
@@ -86,6 +84,8 @@ run_monitor:
         je      .Lwriteaddr
         cmpb    $'R', %al
         je      .Lreadaddr
+        cmpb    $'X', %al
+        je      .Lcrcaddr
         cmpb    $'D', %al
         je      .Ldumpaddr
         cmpb    $'F', %al
@@ -139,6 +139,37 @@ run_monitor:
         call    screen_write
         mov     -260(%ebp), %ecx
         jmp     .Lloop
+.Lcrcaddr:
+        mov     %ecx, -260(%ebp)
+        inc     %esi
+        # read linear address
+        call    hex2int
+        mov     %eax, %edi
+
+        # read number of words
+        call    hex2int
+
+        xor     %ecx, %ecx
+        xor     %edx, %edx
+        dec     %edx
+.Lcrcloop:
+        crc32l  %gs:(%edi,%ecx,4), %edx
+        inc     %ecx
+        cmp     %eax, %ecx
+        jb      .Lcrcloop
+        xor     $0xffffffff, %edx
+
+        mov     %edx, %eax
+        lea     addrmsg+10, %edi        # pointer to output string
+        mov     $8, %ecx                # number of output digits
+        call    int_to_hex
+
+        lea     addrmsg+10, %esi        # message-offset
+        mov     $addrmsg_len-10, %ecx   # message-length
+        call    screen_write
+
+        mov     -260(%ebp), %ecx
+        jmp     .Lloop
 .Ldumpaddr:
         inc     %esi
         sub     $8, %esp
@@ -146,19 +177,11 @@ run_monitor:
         call    hex2int
         # put linear address onto stack
         mov     %eax, (%esp)
-        mov     %eax, mon_addr
 
         # read number of words
         call    hex2int
         # put number of words onto stack
         mov     %eax, 4(%esp)
-        mov     %eax, mon_addr+4
-
-        #mov     8(%ebp), %ebx    # linear address
-        #mov     %ebx, mon_addr
-        #mov     12(%ebp), %edx   # number of words
-        #mov     %edx, mon_addr+4
-
         call    dump_memory
         add     $8, %esp
         jmp     .Lloop
@@ -170,18 +193,32 @@ run_monitor:
         call    get_page_addr
         test    %eax, %eax
         jz      .Lloop
+
         mov     %eax, %edi
 
         # read fill word
         call    hex2int
 
         xor     %ecx, %ecx
+        xor     %edx, %edx
+        dec     %edx
 .Lfillloop:
         mov     %eax, %gs:(%edi,%ecx,4)
+        crc32l  %gs:(%edi,%ecx,4), %edx
         inc     %eax
         inc     %ecx
         cmp     $1024, %ecx
         jb      .Lfillloop
+        xor     $0xffffffff, %edx
+
+        mov     %edx, %eax
+        lea     addrmsg+10, %edi        # pointer to output string
+        mov     $8, %ecx                # number of output digits
+        call    int_to_hex
+
+        lea     addrmsg+10, %esi        # message-offset
+        mov     $addrmsg_len-10, %ecx   # message-length
+        call    screen_write
 
         mov     -260(%ebp), %ecx
         jmp     .Lloop

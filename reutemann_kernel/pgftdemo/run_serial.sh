@@ -1,4 +1,4 @@
 #!/bin/bash
 
-make && qemu-system-x86_64 -fda pgftdemo.flp -m 16M -serial stdio
+make && qemu-system-x86_64 -fda pgftdemo.flp -m 16M -cpu Nehalem -serial stdio
 
