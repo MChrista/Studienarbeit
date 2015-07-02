@@ -279,8 +279,8 @@ print_mapped_pages:
 .Lpteloop:
         # read page table entry (PTE)
         mov     (%ebx,%ecx,4), %edx
-        # check present bit
-        test    $1, %edx
+        # check whether entry is zero
+        test    %edx, %edx
         jz      .Lskippte
         # read PDE index and shift it
         mov     -4(%ebp), %eax
