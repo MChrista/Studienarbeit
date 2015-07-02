@@ -1,13 +1,28 @@
 
+#
+#This Test writes to four pages. Then the page with address 08048000 is replaced first time with copy to disk, and second time without.
+#
+#Map four pages to Memory
+#
 W 08048000 12
 W 08049000 34
 W 08050000 56
 W 08051000 78
+#
+#Control Value in 08048000 -> Exspect 12
+#NRU should replace 08048000
+#
 R 08048000
 R 08052000
 R 08052000
+#
+#In 24120: Control if dirty bit is set
+#
 R 24120
 R 24148
+#
+#NRU should replace 08049000
+#
 R 08048000
 R 24120
 W 08050000 789
@@ -17,8 +32,11 @@ R 24120
 R 24140
 R 24144
 R 24148
+#
+#NRU should replace 08048000 and no copy
+#
 R 08049000
 R 24120
 R 24124
-
+Q no-reboot
 

@@ -43,12 +43,11 @@
 
 #define INVALID_ADDR          0xffffffff
 #define INVALID_INDEX         0xffffffff
+#define INVALID_FLAGS         0x0
 
 #define PDE_KERNEL_PT         PDE(KERNEL_START_ADDR)
 #define PDE_PROGRAMM_PT       PDE(PROGRAM_START_ADDR)
 #define PDE_STACK_PT          PDE(STACK_START_ADDR)
-
-#define SWAP_START_ADDR       0x100             /*From kernel Page 256 upwards*/
 
 
 typedef struct pg_struct {

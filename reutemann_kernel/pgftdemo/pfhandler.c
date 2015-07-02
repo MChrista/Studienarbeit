@@ -23,20 +23,13 @@ uint32_t kernel_page_table[1024] __attribute__((aligned(0x1000)));
 uint32_t programm_page_table[1024] __attribute__((aligned(0x1000)));
 uint32_t stack_page_table[1024] __attribute__((aligned(0x1000)));
 
-//General Parameters
-uint32_t startaddress = 0x200000; //Startaddress for Physical Memory
-
 //Can be set down, but not higher than die maximum number of pages
 uint32_t memoryPageCounter = PAGES_PHYSICAL_NUM;
-
-
-
-uint32_t startOfStorage = 0x300000;
-uint32_t storagePageCounter = 0;
 
 //Page replace parameters
 uint32_t replace_pde_offset = 0;
 uint32_t replace_pte_offset = 512;
+
 
 uint32_t dbg_ft_addr;
 
@@ -71,71 +64,71 @@ void invalidate_addr(uint32_t);
 pg_struct_t *
 pfhandler(uint32_t ft_addr) {
 
-    int page_dir_offset = (ft_addr >> 22) & 0x3FF;
-    int page_table_offset = (ft_addr & 0x003FF000) >> 12;
+    int pde = PDE(ft_addr);
+    int pte = PTE(ft_addr);
 
     dbg_ft_addr = ft_addr;
 
-    pg_struct.pde = page_dir_offset;
-    pg_struct.pte = page_table_offset;
-    pg_struct.off = ft_addr & 0x00000FFF;
+    pg_struct.pde = pde;
+    pg_struct.pte = pte;
+    pg_struct.off = ft_addr & PAGE_OFFSET_MASK;
     pg_struct.ft_addr = ft_addr;
-    pg_struct.vic_addr = 0xFFFFFFFF;
-    pg_struct.sec_addr = 0xFFFFFFFF;
+    pg_struct.vic_addr = INVALID_ADDR;
+    pg_struct.sec_addr = INVALID_ADDR;
 
     //If page table exists in page directory
-    if ((page_directory[page_dir_offset] & PAGE_IS_PRESENT) == PAGE_IS_PRESENT) {
+    if ((page_directory[pde] & PAGE_IS_PRESENT) == PAGE_IS_PRESENT) {
 
         uint32_t *page_table;
 #ifdef __DHBW_KERNEL__
-        page_table = (uint32_t *) ((page_directory[page_dir_offset] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
+        page_table = (uint32_t *) ((page_directory[pde] & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
 #else
-        page_table = (uint32_t *) (page_directory[page_dir_offset] & 0xFFFFF000);
+        page_table = (uint32_t *) (page_directory[pde] & PAGE_ADDR_MASK);
 #endif
 
         //If page is not present in page table
-        if ((*(page_table + page_table_offset) & PAGE_IS_PRESENT) != PAGE_IS_PRESENT) {
+        if ((*(page_table + pte) & PAGE_IS_PRESENT) != PAGE_IS_PRESENT) {
             /* Left 20 bits are memory address
              * 
              */
             uint32_t memoryAddress = getPageFrame();
-            memoryAddress &= 0xFFFFF000;
+            memoryAddress &= PAGE_ADDR_MASK;
 
 
             //TODO: Save swap bit
             memoryAddress = memoryAddress | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
 
-            if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
+            if ((*(page_table + pte) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
                 memoryAddress |= PAGE_IS_SWAPPED;
             }
 
-            *(page_table + page_table_offset) = memoryAddress;
-            setPresentBit(page_dir_offset, page_table_offset, (memoryAddress & 0xFFFFF000));
+            *(page_table + pte) = memoryAddress;
+            setPresentBit(pde, pte, (memoryAddress & PAGE_ADDR_MASK));
 
             //If present on storage bit is set, load page from storage in memory
-            if ((*(page_table + page_table_offset) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
+            if ((*(page_table + pte) & PAGE_IS_SWAPPED) == PAGE_IS_SWAPPED) {
 
-                uint32_t strVirtAddr = getVirtAddrOfFrameOnDisk(page_dir_offset, page_table_offset);
+                uint32_t strVirtAddr = getVirtAddrOfFrameOnDisk(pde, pte);
 
                 copyPage(strVirtAddr, ft_addr & PAGE_ADDR_MASK);
                 //Remove Dirty Bit, because this page wasn't changed
-                *(page_table + page_table_offset) &= 0xFFFFFFBF;
+                *(page_table + pte) &= (~PAGE_IS_DIRTY);
             }
             //Set flags on memory address
 
-            pg_struct.ph_addr = memoryAddress & 0xFFFFF000;
-            pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
+            pg_struct.ph_addr = memoryAddress & PAGE_ADDR_MASK;
+            pg_struct.flags = *(page_table + pte) & PAGE_OFFSET_MASK;
 
         } else {
             //printf("There is no Page Fault\n\n");
-            pg_struct.flags = *(page_table + page_table_offset) & 0x00000FFF;
-            pg_struct.ph_addr = *(page_table + page_table_offset) & 0xFFFFF000;
+            pg_struct.flags = *(page_table + pte) & PAGE_OFFSET_MASK;
+            pg_struct.ph_addr = *(page_table + pte) & PAGE_ADDR_MASK;
         }
 
     } else {
         //printf("Segmentation Fault. Page Table is not present.\n");
-        pg_struct.ph_addr = 0xFFFFFFFF;
-        pg_struct.flags = 0x0;
+        pg_struct.ph_addr = INVALID_ADDR;
+        pg_struct.flags = INVALID_FLAGS;
     }
     return &pg_struct;
 } //END OF PFHANDLER
@@ -215,8 +208,8 @@ getFreeMemoryAddress() {
 void
 freePageInMemory(uint32_t pde, uint32_t pte) {
     uint32_t virtAddr = 0;
-    virtAddr |= pde << 22;
-    virtAddr |= pte << 12;
+    virtAddr |= pde << PDE_SHIFT;
+    virtAddr |= pte << PTE_SHIFT;
     swap(virtAddr);
 }
 
@@ -238,11 +231,11 @@ freeAllPages() {
             clearPage(virtAddr);
 
 #ifdef __DHBW_KERNEL__
-            page_table = (uint32_t *) ((page_directory[pde] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
+            page_table = (uint32_t *) ((page_directory[pde] & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
 #else
-            page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
+            page_table = (uint32_t *) (page_directory[pde] & PAGE_ADDR_MASK);
 #endif
-            page_table[pte] &= 0xFFFFFFFE;
+            page_table[pte] &= (~PAGE_IS_PRESENT);
 #ifdef __DHBW_KERNEL__
             invalidate_addr(virtAddr);
 #endif
@@ -298,7 +291,7 @@ uint32_t getVirtAddrOfFrameOnDisk(uint32_t pde, uint32_t pte) {
     for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
         if (storageBitfield[i].pde == pde && storageBitfield[i].pte == pte) {
             //PDE is zero
-            return ((SWAPPED_START_ADDR + i) << PTE_SHIFT);
+            return (PAGES_SWAPPED_START + (i * PAGE_SIZE));
         }
     }
     return INVALID_ADDR;
@@ -328,13 +321,13 @@ uint32_t swap(uint32_t virtAddr) {
     dbg_swap_addr = virtAddr;
 
 #ifdef __DHBW_KERNEL__
-    uint32_t * page_table = (uint32_t *) ((page_directory[pde] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
+    uint32_t * page_table = (uint32_t *) ((page_directory[pde] & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
 #else
-    uint32_t * page_table = (uint32_t *) (page_directory[pde] & 0xFFFFF000);
+    uint32_t * page_table = (uint32_t *) (page_directory[pde] & PAGE_ADDR_MASK);
 #endif
 
-    uint32_t memoryAddr = page_table[pte] & 0xFFFFF000;
-    int flags = page_table[pte] & 0xFFF;
+    uint32_t memoryAddr = page_table[pte] & PAGE_ADDR_MASK;
+    int flags = page_table[pte] & PAGE_OFFSET_MASK;
 
 
 
@@ -384,7 +377,7 @@ uint32_t swap(uint32_t virtAddr) {
     // Reset present bit
     removePresentBit(pde, pte);
 
-    page_table[pte] &= 0xFFFFFFFE;
+    page_table[pte] &= (~PAGE_IS_PRESENT);
 
     dbg_swap_result = memoryAddr;
 
@@ -424,8 +417,8 @@ getAddressOfPageToReplace() {
     do {
 
         counter_pte++;
-        if (counter_pte > 1023) {
-            if (counter_pde == 1023) {
+        if (counter_pte > PDE_MAX_INDEX) {
+            if (counter_pde == PDE_MAX_INDEX) {
                 counter_pde = 0;
                 counter_pte = 512; //Do not remove Kernel Pages
             } else {
@@ -438,18 +431,18 @@ getAddressOfPageToReplace() {
             //Found present page
             //First invalidate TLB to have actual flags in page entry
             virtAddr = 0;
-            virtAddr |= counter_pde << 22;
-            virtAddr |= counter_pte << 12;
+            virtAddr |= counter_pde << PDE_SHIFT;
+            virtAddr |= counter_pte << PTE_SHIFT;
 #ifdef __DHBW_KERNEL__
             invalidate_addr(virtAddr);
-            temp_page_table = (uint32_t *) ((page_directory[counter_pde] & 0xFFFFF000) - (uint32_t) & LD_DATA_START);
+            temp_page_table = (uint32_t *) ((page_directory[counter_pde] & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
 #else
-            temp_page_table = (uint32_t *) (page_directory[counter_pde] & 0xFFFFF000);
+            temp_page_table = (uint32_t *) (page_directory[counter_pde] & PAGE_ADDR_MASK);
 #endif
-            flags = *(temp_page_table + counter_pte) & 0xFFF;
+            flags = *(temp_page_table + counter_pte) & PAGE_OFFSET_MASK;
             tmp_class = getClassOfPage(flags);
             //Remove access bit
-            *(temp_page_table + counter_pte) &= 0xFFFFFFDF;
+            *(temp_page_table + counter_pte) &= (~PAGE_IS_ACCESSED);
 
             //If class of page is lower than actual class, save pde and pte
             if (class > tmp_class) {
@@ -465,8 +458,8 @@ getAddressOfPageToReplace() {
 
     //Create a virtual address with the indices of the page which is to replace
     virtAddr = 0;
-    virtAddr |= replace_pde_offset << 22;
-    virtAddr |= replace_pte_offset << 12;
+    virtAddr |= replace_pde_offset << PDE_SHIFT;
+    virtAddr |= replace_pte_offset << PTE_SHIFT;
     return virtAddr;
 } //END OF NRU
 
@@ -542,23 +535,37 @@ init_paging() {
         }
 
 #else
-        if (i >= (0x10000 >> 12) && i < (0x20000 >> 12)) {
-            kernel_page_table[i] = (uint32_t) (i * 0x1000 + PAGE_IS_PRESENT);
+        if (i >= (0x10000 >> PTE_SHIFT) && i < (0x20000 >> PTE_SHIFT)) {
+            kernel_page_table[i] = (uint32_t) (i * PAGE_SIZE + PAGE_IS_PRESENT);
         } else if (i > (0x20000 >> 12)) {
-            kernel_page_table[i] = (uint32_t) (i * 0x1000 + PAGE_IS_PRESENT + PAGE_IS_RW);
+            kernel_page_table[i] = (uint32_t) (i * PAGE_SIZE + PAGE_IS_PRESENT + PAGE_IS_RW);
         } else {
-            kernel_page_table[i] = (uint32_t) (i * 0x1000 + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
+            kernel_page_table[i] = (uint32_t) (i * PAGE_SIZE + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
         }
 #endif
     }
 
-    //Map swap space
-    for (uint32_t i = SWAP_START_ADDR; i < (SWAP_START_ADDR + PAGES_SWAPPED_NUM); i++) {
-        storageBitfield[i - SWAP_START_ADDR].memAddr = (uint32_t) (PAGES_SWAPPED_START + (i - SWAP_START_ADDR) * PAGE_SIZE);
-        storageBitfield[i - SWAP_START_ADDR].pde = 0;
-        storageBitfield[i - SWAP_START_ADDR].pte = 0;
-        kernel_page_table[i] = (uint32_t) (PAGES_SWAPPED_START + (i - SWAP_START_ADDR) * PAGE_SIZE + PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER);
+    //Map memory Adresses 1:1
+    if (PDE(PAGES_PHYSICAL_START) == 0) { //Kernel Page Table
+        for (uint32_t i = 0; i < PAGES_PHYSICAL_NUM; i++) {
+            uint32_t flags = PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER;
+            uint32_t address = PAGES_PHYSICAL_START + (i * PAGE_SIZE);
+            uint32_t index = PTE(PAGES_PHYSICAL_START) + i;
+            kernel_page_table[index] = (uint32_t) (address + flags);
+        }
     }
+    
+    //Map swap Adresses 1:1
+    if (PDE(PAGES_SWAPPED_START) == 0) { //Kernel Page Table
+        for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
+            uint32_t flags = PAGE_IS_PRESENT + PAGE_IS_RW + PAGE_IS_USER;
+            uint32_t address = PAGES_SWAPPED_START + (i * PAGE_SIZE);
+            uint32_t index = PTE(PAGES_SWAPPED_START) + i;
+            kernel_page_table[index] = (uint32_t) (address + flags);
+        }
+    }
+
+
 
 
     *(page_directory + PDE_KERNEL_PT) = (uint32_t) kernel_page_table | PAGE_IS_PRESENT | PAGE_IS_RW | PAGE_IS_USER;
