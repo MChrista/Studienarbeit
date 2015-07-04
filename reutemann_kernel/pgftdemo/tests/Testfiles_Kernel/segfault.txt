@@ -5,7 +5,7 @@ C
 #
 # Try to Read Page, expecting Segfault
 #
-R FFFFF000
+R 00400000
 #
 # Quit
 #
