@@ -50,6 +50,7 @@
 #define PDE_STACK_PT          PDE(STACK_START_ADDR)
 
 
+
 typedef struct pg_struct {
     uint32_t ft_addr;     // faulting linear memory address
     uint32_t pde;         // Page Directory Entry
