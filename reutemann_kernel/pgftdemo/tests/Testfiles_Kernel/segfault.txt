@@ -1,0 +1,12 @@
+#
+# Clear all pages
+#
+C
+#
+# Try to Read Page, expecting Segfault
+#
+R FFFFF000
+#
+# Quit
+#
+Q -no-reboot

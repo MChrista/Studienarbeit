@@ -1,0 +1,44 @@
+#
+# CLear
+#
+C
+#
+# Fill up memory space
+#
+W 08048000 1
+W 08049000 2
+W 08050000 3
+W 08051000 4
+#
+# Swap Pages away
+#
+W 08052000 5
+W 08053000 6
+W 08054000 7
+W 08055000 8
+#
+# Overwrite values in some pages, read others
+#
+R 08048000
+R 08049000
+W 08050000 9
+W 08051000 10
+#
+# Write new pages back to memory, check if modified
+#
+W 08052000 5
+W 08053000 6
+W 08054000 7
+W 08055000 8
+#
+# Check if swapping was done correctly (should read 1 2 9 10 )
+#
+R 00300000
+R 00301000
+R 00302000
+R 00303000
+#
+#
+# Quit
+#
+Q -no-reboot

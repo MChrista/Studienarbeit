@@ -1,0 +1,53 @@
+
+# Make sure all pages are cleared
+C
+#
+# Create 4 pages and write a number in each
+#
+W 08048000 1
+W 08048004 10
+W 08049000 2
+W 08049004 20
+W 08050000 3
+W 08050004 30
+W 08051000 4
+W 08051004 40
+# 
+# Swap all pages
+#
+W 08052000 5
+W 08053000 6
+W 08054000 7
+W 08055000 8
+#
+# Check if  new pages were reinitialized
+#
+R 08052004
+R 08053004
+R 08054004
+R 08055004
+#
+# Check values of swapped pages
+#
+R 00300000
+R 00301000
+R 00302000
+R 00303000
+#
+# Read old pages again and check if values are the same
+#
+R 08048000
+R 08049000
+R 08050000
+R 08051000
+#
+# Read new pages again
+#
+R 08052000
+R 08053000
+R 08054000
+R 08055000
+#
+# Quit
+#
+Q -no-reboot
