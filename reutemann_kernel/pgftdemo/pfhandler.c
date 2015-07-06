@@ -221,20 +221,24 @@ freeAllPages() {
             virtAddr = 0;
             virtAddr |= pde << PDE_SHIFT;
             virtAddr |= pte << PTE_SHIFT;
-            kprintf("Free Adress %08X\n", virtAddr);
-            clearPage(virtAddr);
-
+            
+            if (virtAddr != 0x0) {
+                clearPage(virtAddr);
 #ifdef __DHBW_KERNEL__
-            page_table = (uint32_t *) ((page_directory[pde] & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
+                page_table = (uint32_t *) ((page_directory[pde] & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
 #else
-            page_table = (uint32_t *) (page_directory[pde] & PAGE_ADDR_MASK);
+                page_table = (uint32_t *) (page_directory[pde] & PAGE_ADDR_MASK);
 #endif
-            //Remove all flags
-            page_table[pte] &= PAGE_ADDR_MASK;
+                //Remove all flags
+                page_table[pte] &= PAGE_ADDR_MASK;
 #ifdef __DHBW_KERNEL__
-            invalidate_addr(virtAddr);
+                invalidate_addr(virtAddr);
 #endif
-            removePresentBit(pde, pte);
+                removePresentBit(pde, pte);
+            }
+
+
+
 
         }
     }
