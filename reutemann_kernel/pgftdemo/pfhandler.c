@@ -56,10 +56,10 @@ uint32_t swap(uint32_t virtAddr);
 uint32_t getFreeMemoryAddress();
 uint32_t getVirtAddrOfFrameOnDisk(uint32_t, uint32_t);
 uint32_t getIndexInStorageBitfield(uint32_t, uint32_t);
-void freePageInMemory(uint32_t, uint32_t);
 void copyPage(uint32_t, uint32_t);
 void clearPage(uint32_t);
 void invalidate_addr(uint32_t);
+void freeAllPages();
 
 pg_struct_t *
 pfhandler(uint32_t ft_addr) {
@@ -207,14 +207,6 @@ getFreeMemoryAddress() {
 } // end of getFreeMemoryAddress
 
 void
-freePageInMemory(uint32_t pde, uint32_t pte) {
-    uint32_t virtAddr = 0;
-    virtAddr |= pde << PDE_SHIFT;
-    virtAddr |= pte << PTE_SHIFT;
-    swap(virtAddr);
-} // end of freePageInMemory
-
-void
 freeAllPages() {
     uint32_t pde;
     uint32_t pte;
@@ -226,9 +218,10 @@ freeAllPages() {
         pde = physicalMemoryBitfield[i].pde;
         pte = physicalMemoryBitfield[i].pte;
         if (isPresentBit(pde, pte)) {
-
+            virtAddr = 0;
             virtAddr |= pde << PDE_SHIFT;
             virtAddr |= pte << PTE_SHIFT;
+            kprintf("Free Adress %08X\n", virtAddr);
             clearPage(virtAddr);
 
 #ifdef __DHBW_KERNEL__
@@ -236,7 +229,8 @@ freeAllPages() {
 #else
             page_table = (uint32_t *) (page_directory[pde] & PAGE_ADDR_MASK);
 #endif
-            page_table[pte] &= (~PAGE_IS_PRESENT);
+            //Remove all flags
+            page_table[pte] &= PAGE_ADDR_MASK;
 #ifdef __DHBW_KERNEL__
             invalidate_addr(virtAddr);
 #endif
@@ -319,6 +313,7 @@ uint32_t swap(uint32_t virtAddr) {
     dbg_swap_addr = virtAddr;
 
 #ifdef __DHBW_KERNEL__
+    invalidate_addr(virtAddr);
     uint32_t * page_table = (uint32_t *) ((page_directory[pde] & PAGE_ADDR_MASK) - (uint32_t) & LD_DATA_START);
 #else
     uint32_t * page_table = (uint32_t *) (page_directory[pde] & PAGE_ADDR_MASK);
@@ -354,15 +349,13 @@ uint32_t swap(uint32_t virtAddr) {
         }
         //set swapped bit
         page_table[pte] |= PAGE_IS_SWAPPED;
+        //remove dirty bit
+        page_table[pte] &= (~PAGE_IS_DIRTY);
     }
     // Reset present bit
     removePresentBit(pde, pte);
 
     page_table[pte] &= (~PAGE_IS_PRESENT);
-    
-#ifdef __DHBW_KERNEL__
-    invalidate_addr(virtAddr);
-#endif
 
     dbg_swap_result = memoryAddr;
 
