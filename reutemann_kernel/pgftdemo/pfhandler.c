@@ -221,7 +221,7 @@ freeAllPages() {
             virtAddr = 0;
             virtAddr |= pde << PDE_SHIFT;
             virtAddr |= pte << PTE_SHIFT;
-            
+
             if (virtAddr != 0x0) {
                 clearPage(virtAddr);
 #ifdef __DHBW_KERNEL__
@@ -237,11 +237,20 @@ freeAllPages() {
                 removePresentBit(pde, pte);
             }
 
-
-
-
         }
     }
+
+    for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
+        if (storageBitfield[i].pde != 0 && storageBitfield[i].pte != 0) {
+            uint32_t pde = storageBitfield[i].pde;
+            uint32_t pte = storageBitfield[i].pte;
+            uint32_t storageAddr = 0;
+            storageAddr = getVirtAddrOfFrameOnDisk(pde, pte);
+            clearPage(storageAddr);
+        }
+    }
+
+
 } // end of freeAllPages
 
 //==============================================================================
@@ -343,7 +352,6 @@ uint32_t swap(uint32_t virtAddr) {
             uint32_t index = getIndexInStorageBitfield(0, 0);
             storageBitfield[index].pde = pde;
             storageBitfield[index].pte = pte;
-
             storageAddr = getVirtAddrOfFrameOnDisk(pde, pte);
             pg_struct.sec_addr = storageAddr;
             copyPage(virtAddr, storageAddr);

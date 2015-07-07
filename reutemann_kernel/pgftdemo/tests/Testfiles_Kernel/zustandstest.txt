@@ -1,0 +1,86 @@
+#
+# Clear all pages
+#
+C
+#
+# This Test follows the page 08050000
+#
+R 08048000
+R 08049000
+R 08050000
+R 08051000
+#
+#First Replace: Page should remain im Memory
+#Access Bit should removed
+#
+R 08052000
+R 24140
+#
+#Replace: Page should remain in Memory
+#No changes in Flags
+#
+R 08053000
+R 24140
+#
+#NRU replaces Page with no copy to disk 
+#Disk bit should'nt be set
+#
+R 08054000
+R 24140
+#
+#write to page
+#Access and dirty should set
+#Read exspect 1234
+#
+W 08050000 1234
+R 24140
+R 08050000
+#
+#Access Bit of Page should removed
+#
+R 08055000
+R 24140
+#
+#Preparing
+#
+W 08051000 1
+W 08052000 2
+#
+#Now it is turn of 08050000 because Access bit in 08055000 is higher than dirty bit
+#
+#Page should be replaced with copy to disk
+#Exspect removed present bit and removed disk bit
+#
+M
+R 08054000
+R 24140
+#
+# Read content from Page on Storage
+# Exspect 1234
+#
+R 300000
+#
+# Read Page from Storage again
+# Content should 1234
+# Accessed Bit is set
+# Dirty Bit is removed
+#
+R 08050000
+R 24140
+#
+#Change content
+#
+#
+# Free all Pages
+# Check Flags an Contents -> Exspect zeros
+#
+C
+R 24140
+R 300000
+R 200000
+R 201000
+R 202000
+R 203000
+# Quit
+#
+Q -no-reboot
