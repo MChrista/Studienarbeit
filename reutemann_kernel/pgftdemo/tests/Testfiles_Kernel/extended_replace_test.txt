@@ -25,12 +25,71 @@ R 24800
 R 27000
 #
 # Write to all Pages except 08000000
+# Page Should have class 2, so access Bits of other pages are removed
 # Next PageFault should replace 08000000
 #
 W FFC00000 489
 W FFFFF000 123
 W 08200000 1396
 W 0804A123 963 
+#
+# Check Flags
+#
+# Exspect Disk, Not present
+R 24000
+# Exspect Dirty, Access
+R 24128
+# Exspect Dirty
+R 24800
+# Exspect Dirty
+R 27000
+# Exspect Dirty
+R 27FFC
+#
+# Show Pages in Memory
+#
+M
+#
+# Exspect Replace of 08200000 with copy
+#
+R 08100000
+#
+# Show Pages in Memory
+#
+M
+#
+# Replace Page FFFFF000 and reload 08000000
+# Exspectet Values: 489 and 78914561
+#
+R FFC00000
+R 08000000
+#
+# Load 08200000 again -> Exspect 08100000 for replace
+# Exspected Value: 1396
+#
+R 08200000
+#
+M
+#
+# Read FFFFF000 again
+# Exspect 08000000 to replace with no copy
+#
+R FFFFF000
+M
+#
+# Free all Pages
+#
+C
+#
+# Control Values on Disk and in Memory
+#
+M
+R 300000
+R 301000
+R 200000
+R 201000
+R 202000
+R 203000
 #
 # End Test 
 #

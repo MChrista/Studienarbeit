@@ -241,7 +241,7 @@ freeAllPages() {
     }
 
     for (uint32_t i = 0; i < PAGES_SWAPPED_NUM; i++) {
-        if (storageBitfield[i].pde != 0 && storageBitfield[i].pte != 0) {
+        if (!(storageBitfield[i].pde == 0 && storageBitfield[i].pte == 0)) {
             uint32_t pde = storageBitfield[i].pde;
             uint32_t pte = storageBitfield[i].pte;
             uint32_t storageAddr = 0;
