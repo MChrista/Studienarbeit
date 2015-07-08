@@ -69,7 +69,26 @@ R 08050000
 R 24140
 #
 #Change content
+# Export to Disk
 #
+W 08050000 5978
+R FFF12000
+R 08020000
+#
+#Check value on Disk and Flags on Page
+# Exspect value 5978
+# Exspect Disk, NOT Present
+#
+R 00300000
+R 24140
+#
+# Read page again and check values on disk and memory
+# Exspect 5978
+# Ecspected Flags: Present, Write, Accessed, Disk
+#
+R 08050000
+R 24140
+R 00300000
 #
 # Free all Pages
 # Check Flags an Contents -> Exspect zeros

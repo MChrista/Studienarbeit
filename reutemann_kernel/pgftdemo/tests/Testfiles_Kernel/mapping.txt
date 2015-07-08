@@ -27,5 +27,25 @@ R 00204FFF
 R 00205000
 R 00250000
 R 002FFFFF
+#
+# Exspect Segfault
+#
 R 00400000
+#
+# Test Stack Table
+# Exspect Page Faults
+#
+R FFFFFFFF
+R FFFFF000
+R FFE12000
+R FFD56000
+R FFCFF000
+R FFC01000
+R FFC00000
+#
+# Exspect Seg Fault
+#
+R FFBFF000
+R FFA00000
+#
 Q -no-reboot

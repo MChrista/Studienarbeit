@@ -1,0 +1,37 @@
+#
+# Map four out of sequence Pages
+#
+R 08000000
+R FFC00000
+R 08020000
+R 08200000
+#
+# Test Segfaults above and beyond Programm Page Table
+#
+R 08400000
+R 07C00000
+#
+# Write to 08000000
+#
+W 08000000 78914561
+#
+# Page Fault -> Exspect 0802000 to replace without copy
+# Flags of all page have to be unset
+#
+R FFFFF000
+R 24000
+R 24080
+R 24800
+R 27000
+#
+# Write to all Pages except 08000000
+# Next PageFault should replace 08000000
+#
+W FFC00000 489
+W FFFFF000 123
+W 08200000 1396
+W 0804A123 963 
+#
+# End Test 
+#
+Q -no-reboot
