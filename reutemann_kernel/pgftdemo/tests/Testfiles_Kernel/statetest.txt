@@ -49,7 +49,7 @@ W 08052000 2
 #Now it is turn of 08050000 because Access bit in 08055000 is higher than dirty bit
 #
 #Page should be replaced with copy to disk
-#Exspect removed present bit and removed disk bit
+#Exspect removed present bit and disk bit
 #
 M
 R 08054000

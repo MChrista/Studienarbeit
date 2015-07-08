@@ -16,7 +16,7 @@ R 08048000
 R 08052000
 R 08052000
 #
-#In 24120: Control if dirty bit is set
+#In 24120: Control if disk bit is set
 #
 R 24120
 R 24148
